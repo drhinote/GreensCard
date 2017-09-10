@@ -1,0 +1,20 @@
+<ion-view title="Withdraw" hide-nav-bar="true" cache-view="false" id="page4" style="background-color:#FFFFFF;">
+  <ion-content padding="false" class="manual-ios-statusbar-padding">
+    <div id="withdraw-markdown11" class="show-list-numbers-and-dots">
+      <p style="color:#000000;">Balance:
+        <strong>{{ info.value.balance }}</strong>
+      </p>
+    </div>
+    <form id="withdraw-form4" class="list">
+      <label class="item item-input" id="withdraw-input14" name="amount">
+        <span class="input-label">$</span>
+        <input type="number" placeholder="Withdrawl Amount" ng-model="out.amount">
+      </label>
+      <div class="spacer" style="width: 320px; height: 12.9886px;"></div>
+      <div id="withdraw-markdown10" class="show-list-numbers-and-dots">
+        <p style="color:#000000;">This action will send a request to have funds converted and sent to you after approval.</p>
+      </div>
+      <button id="withdraw-button12" ng-click="submit()" ng-disabled="out.freeze" class="button button-balanced button-block">{{ output }}</button>
+    </form>
+  </ion-content>
+</ion-view>

@@ -1,0 +1,81 @@
+@
+A
+3600
+104.214.77.221
+…
+@
+NS
+172800
+ns1-02.azure-dns.com.
+ns2-02.azure-dns.net.
+ns3-02.azure-dns.org.
+ns4-02.azure-dns.info.
+…
+@
+SOA
+3600
+Email: azuredns-hostmaster.microsoft.com
+Host: ns1-02.azure-dns.com.
+Refresh: 3600
+Retry: 300
+Expire: 2419200
+Minimum TTL: 300
+Serial number: 1
+…
+_domainconnect
+CNAME
+3600
+_domainconnect.ss.domaincontrol.com
+…
+ftp
+CNAME
+3600
+greenscard.net
+…
+www
+CNAME
+3600
+greenscard.net
+…
+
+
+
+@
+A
+3600
+104.214.77.221
+…
+@
+NS
+172800
+ns1-02.azure-dns.com.
+ns2-02.azure-dns.net.
+ns3-02.azure-dns.org.
+ns4-02.azure-dns.info.
+…
+@
+SOA
+3600
+Email: azuredns-hostmaster.microsoft.com
+Host: ns1-02.azure-dns.com.
+Refresh: 3600
+Retry: 300
+Expire: 2419200
+Minimum TTL: 300
+Serial number: 1
+…
+_domainconnect
+CNAME
+3600
+_domainconnect.ss.domaincontrol.com
+…
+ftp
+CNAME
+3600
+greenscard.net
+…
+www
+CNAME
+3600
+greenscard.net
+…

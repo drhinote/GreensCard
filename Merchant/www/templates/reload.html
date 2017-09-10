@@ -1,0 +1,20 @@
+<ion-view title="Reload" hide-nav-bar="true" cache-view="false" id="page4" style="background-color:#FFFFFF;" class="secured">
+  <ion-content padding="false" class="manual-ios-statusbar-padding">
+    <div id="reload-markdown11" class="show-list-numbers-and-dots">
+      <p style="color:#000000;">Balance:
+        <strong>{{ user.balance }}</strong>
+      </p>
+    </div>
+    <form id="reload-form4" class="list">
+      <label class="item item-input" id="reload-input14" name="amount">
+        <span class="input-label">$</span>
+        <input type="number" placeholder="Withdrawl Amount" ng-model="out.amount">
+      </label>
+      <div class="spacer" style="width: 320px; height: 12.9886px;"></div>
+      <div id="reload-markdown10" class="show-list-numbers-and-dots">
+        <p style="color:#000000;">Funds will be transferred to you using the disbursement method selected when setting up your merchant account. All transfers must be manually verified.</p>
+      </div>
+      <button id="reload-button12" ng-click="submit()" class="button button-balanced button-block">{{ output }}</button>
+    </form>
+  </ion-content>
+</ion-view>

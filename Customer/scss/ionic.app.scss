@@ -1,0 +1,20 @@
+$dark: #222222;
+$light: #FDFDFD;
+$balanced: #006938;
+$energized: #ffc900;
+$link-color: $energized;
+$input-color: #006938 !default;
+$popup-background-color: none !default;
+$base-background-color: #ffffff !default;
+$button-border-radius: 0px !default;
+$ionicons-font-path: "../lib/ionic/fonts" !default;
+@import "../www/lib/ionic/scss";
+$input-label-color: lighten($dark, 40%) !default;
+ion-view,.pane,.view {
+	background-color: none;
+}
+
+body {
+	color: #006938;
+}
+

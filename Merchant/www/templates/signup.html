@@ -1,0 +1,33 @@
+<ion-view title="Signup" cache-view="false" id="page7" style="background-color:#FFFFFF;">
+  <ion-content padding="false" class="has-header">
+    <form id="signup-form2" class="list">
+      <div class="spacer" style="width: 320px; height: 16.9972px;"></div>
+      <ion-list id="signup-list2">
+        <label class="item item-input" id="signup-input3" name="Name">
+          <span class="input-label">Full Name</span>
+          <input type="text" placeholder="" ng-model="details.name">
+        </label>
+        <label class="item item-input" id="signup-input6" name="zipCode">
+          <span class="input-label">Zip Code</span>
+          <input type="tel" placeholder="" ng-model="details.zipcode">
+        </label>
+        <label class="item item-input" id="signup-input4" name="Email">
+          <span class="input-label">Email</span>
+          <input type="email" placeholder="" ng-model="details.email">
+        </label>
+        <label class="item item-input" id="signup-input5" name="Password">
+          <span class="input-label">Password</span>
+          <input type="password" placeholder="" ng-model="details.password">
+        </label>
+      </ion-list>
+      <ion-checkbox id="signup-checkbox1" name="Agreement" ng-model="signed" ng-value="'yes'">By Joining, I accept
+        <br>The Greens Card
+        <br>
+        <a ui-sref="termsOfService">Terms of Service</a>
+      </ion-checkbox>
+      <a ui-sref="termsOfService({&quot;name&quot;:&quot;&quot;+ details.name +&quot;&quot;,&quot;password&quot;:&quot;&quot;+ details.password +&quot;&quot;,&quot;email&quot;:&quot;&quot;+ details.email +&quot;&quot;,&quot;zipcode&quot;:&quot;&quot;+ details.zipcode +&quot;&quot;})"
+        id="signup-button5" class="button button-assertive button-block button-outline icon-left ion-alert-circled"> Terms of Service</a>
+      <button id="signup-button3" ng-disabled="!signed &amp;&amp; busy" ng-click="register()" class="button button-balanced button-block icon-left ion-document"> {{ output }}</button>
+    </form>
+  </ion-content>
+</ion-view>
