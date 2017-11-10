@@ -7839,11 +7839,11 @@ input[type="checkbox"][readonly] {
   cursor: pointer; }
   .checkbox input:before,
   .checkbox .checkbox-icon:before {
-    border-color: #ddd; }
+    border-color: #006938; }
   .checkbox input:checked:before,
   .checkbox input:checked + .checkbox-icon:before {
-    background: #387ef5;
-    border-color: #387ef5; }
+    background: #006938;
+    border-color: #006938; }
 
 .checkbox-light input:before,
 .checkbox-light .checkbox-icon:before {
@@ -9798,63 +9798,6 @@ a.button {
   opacity: 0;
   -webkit-transition-duration: 0s;
   transition-duration: 0s; }
-
-.firebaseui-textfield.mdl-textfield .firebaseui-label::after {
-  background-color: #006938; }
-
-.firebaseui-link {
-  color: #006938;
-  font-variant: normal;
-  font-weight: normal;
-  text-decoration: none; }
-
-.firebaseui-tos {
-  color: #006938;
-  direction: ltr;
-  font-size: 12px;
-  line-height: 16px;
-  margin-bottom: 24px;
-  margin-top: 0;
-  text-align: left; }
-
-.firebaseui-idp-password,
-.firebaseui-idp-password:hover,
-.mdl-button.firebaseui-idp-password:active,
-.mdl-button.firebaseui-idp-password:focus {
-  background-color: #006938; }
-
-.firebaseui-idp-phone,
-.firebaseui-idp-phone:hover,
-.mdl-button.firebaseui-idp-phone:active,
-.mdl-button.firebaseui-idp-phone:focus {
-  background-color: #006938; }
-
-.firebaseui-idp-google,
-.firebaseui-idp-google:hover,
-.mdl-button.firebaseui-idp-google:active,
-.mdl-button.firebaseui-idp-google:focus {
-  background-color: #006938; }
-
-.firebaseui-idp-google > .firebaseui-idp-text {
-  color: #757575; }
-
-.firebaseui-idp-github,
-.firebaseui-idp-github:hover,
-.mdl-button.firebaseui-idp-github:active,
-.mdl-button.firebaseui-idp-github:focus {
-  background-color: #006938; }
-
-.firebaseui-idp-facebook,
-.firebaseui-idp-facebook:hover,
-.mdl-button.firebaseui-idp-facebook:active,
-.mdl-button.firebaseui-idp-facebook:focus {
-  background-color: #006938; }
-
-.firebaseui-idp-twitter,
-.firebaseui-idp-twitter:hover,
-.mdl-button.firebaseui-idp-twitter:active,
-.mdl-button.firebaseui-idp-twitter:focus {
-  background-color: #006938; }
 
 ion-view, .pane, .view {
   background-color: none; }

@@ -1,0 +1,38 @@
+<ion-view title="Withdraw" hide-nav-bar="true" cache-view="false" id="page4" style="background-color:#FFFFFF;">
+  <ion-content padding="false" class="manual-ios-statusbar-padding">
+    <div id="withdraw-markdown11" class="show-list-numbers-and-dots">
+      <p style="color:#006938;">Balance:
+        <strong>{{ info.value.balance }}</strong>
+      </p>
+    </div>
+    <div id="withdraw-markdown13" ng-if="fee" class="show-list-numbers-and-dots">
+      <p style="color:#006938;">A processing fee of
+        <strong> {{ fee }} </strong> will be taken out of your withdrawal total </p>
+    </div>
+    <form id="withdraw-form4" class="list">
+      <label class="item item-input" id="withdraw-input14" name="amount">
+        <span class="input-label">$</span>
+        <input type="number" placeholder="Withdrawl Amount" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
+      </label>
+      <div class="spacer" style="width: 320px; height: 12.9886px;"></div>
+      <div id="withdraw-markdown10" class="show-list-numbers-and-dots">
+        <p style="color:#000000;">This action will send a request to have funds converted and sent to you after approval.</p>
+      </div>
+      <button id="withdraw-button12" ng-click="submit()" ng-disabled="out.freeze" class="button button-balanced button-block">{{ out.output }}</button>
+    </form>
+    <div id="withdraw-container1" ng-show="info.value.tipsBal > 0">
+      <form id="withdraw-form8" class="list">
+        <div id="withdraw-markdown14" class="show-list-numbers-and-dots">
+          <p style="color:#006938;">Gratuities:
+            <strong>{{ info.value.tipsBal }}</strong>
+          </p>
+        </div>
+        <label class="item item-input" id="withdraw-input10" name="tipAmount">
+          <span class="input-label">$</span>
+          <input type="number" placeholder="Withdrawl Amount" ng-model="out.tipAmount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
+        </label>
+      </form>
+      <button id="withdraw-button11" ng-click="submitTips()" class="button button-balanced button-block">{{ out.tipOutput }}</button>
+    </div>
+  </ion-content>
+</ion-view>

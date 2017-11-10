@@ -1,0 +1,5 @@
+qr codes work once
+charge and refund with change   5 - 2.32 + 2.32 and refund with sell, check for string appending
+check unconfirmed balance
+set to session login
+confirm popup

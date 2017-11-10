@@ -1,18 +1,26 @@
-<ion-view title="Manage" hide-nav-bar="true" cache-view="false" id="page10" style="background-color:#FFFFFF;" class="secured">
+<ion-view title="Manage" hide-nav-bar="true" cache-view="false" id="page10" style="background-color:#FFFFFF;">
   <ion-content padding="true" class="manual-ios-statusbar-padding">
     <div style="margin-right:-20px;">
       <button id="manage-button9" ng-click="logout()" style="left:-10px;" class="button button-balanced button-full icon-left ion-log-out">Sign Out</button>
     </div>
     <div id="manage-markdown12" class="show-list-numbers-and-dots">
-      <p style="color:#000000;">Balance:
+      <p style="color:#006938;">Balance:
         <strong>{{ info.value.balance }}</strong>
       </p>
     </div>
+    <div ng-show="info.value.tipsBal > 0 || tipping">
+      * Tips:
+      <strong>{{ info.value.tipsBal }}</strong>
+    </div>
+    <form id="manage-form6" class="list">
+      <button id="manage-button10" ng-click="refreshBalance(info.value)" class="button button-balanced button-small button-block button-outline icon ion-android-refresh"> Refresh Balance</button>
+      <ion-checkbox id="manage-checkbox1" ng-model="tipping" ng-change="setTips(tipping)">Tips {{ tipping?'Enabled':'Disabled' }}</ion-checkbox>
+    </form>
     <ion-list id="manage-list6">
       <ion-item class="item-divider" id="manage-list-item-divider5"> Recent Transactions</ion-item>
       <ion-item id="manage-list-item22" ng-repeat="transaction in transactions.value">{{ printPretty(transaction) }}
-        <span class="item-note">{{ makeNote(transaction) }}</span>
-        <ion-option-button class="button-assertive" ng-click="refund(transaction)">Refund</ion-option-button>
+        <span class="item-note">{{ transaction.note }}</span>
+        <ion-option-button class="button-assertive" ng-click="refund(transaction)" ng-if="transaction.to.uid == info.value.uid" ng-show="!transaction.refunded">Refund</ion-option-button>
       </ion-item>
     </ion-list>
   </ion-content>

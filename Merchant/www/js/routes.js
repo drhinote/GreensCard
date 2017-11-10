@@ -51,7 +51,13 @@ angular.module('app.routes', [])
     }
   })
 
-$urlRouterProvider.otherwise('/home/manage')
+  .state('termsOfService', {
+    url: '/terms',
+    templateUrl: 'templates/termsOfService.html',
+    controller: 'termsOfServiceCtrl'
+  })
+
+$urlRouterProvider.otherwise('/login')
 
 
 });

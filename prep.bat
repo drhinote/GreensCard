@@ -1,0 +1,1 @@
+cd Merchant & ionic cordova prepare browser & cd ..\Customer & ionic cordova prepare browser & cd .. & firebase deploy --only hosting & firebase deploy --only functions

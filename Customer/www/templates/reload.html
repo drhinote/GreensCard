@@ -1,14 +1,31 @@
 <ion-view title="Reload" hide-nav-bar="true" cache-view="false" id="page4" style="background-color:#FFFFFF;">
   <ion-content padding="false" class="manual-ios-statusbar-padding">
+    <div id="reload-markdown18" class="show-list-numbers-and-dots">
+      <p style="color:#006938;">Balance:
+        <strong>{{ info.value.balance }}</strong>
+      </p>
+    </div>
     <form id="reload-form4" class="list">
+      <div id="reload-markdown23" ng-show="fee" style="text-align:center;" class="show-list-numbers-and-dots">
+        <p style="color:red;">A processing fee of
+          <strong>{{ fee }}</strong> will be added to your deposit amount</p>
+      </div>
       <label class="item item-input" id="reload-input14">
         <span class="input-label">$</span>
-        <input type="number" placeholder="$500 Max" ng-model="out.amount">
+        <input type="number" placeholder="$500 Max" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
       </label>
-      <div class="spacer" style="width: 320px; height: 15.9744px;"></div>
-      <div class="spacer" style="width: 320px; height: 12.9886px;"></div>
-      <div class="spacer" style="width: 320px; height: 11.9915px;"></div>
-      <button id="reload-button12" ng-click="submit(this)" class="button button-balanced button-block">{{ output }}</button>
+      <div id="reload-container1" ng-show="info.value.profileSaved">
+        <div class="spacer" style="width: 320px; height: 12px;"></div>
+        <div id="reload-markdown17" class="show-list-numbers-and-dots">
+          <p style="color:#000000;"> Card:
+            <strong>{{ info.value.profileSaved.profile.paymentProfiles[0].payment.creditCard.cardNumber || 'Error reading saved info' }}</strong>
+          </p>
+        </div>
+        <button id="reload-button9" ng-click="useStored()" class="button button-balanced button-block">{{ output2 }}</button>
+        <button id="reload-button10" ng-click="removeProfile()" class="button button-balanced button-block button-outline">Remove Saved Info</button>
+      </div>
+      <ion-toggle toggle-class="toggle-balanced" id="reload-toggle1" ng-model="out.saveInfo">{{ info.value.profileSaved?'Update':'Store' }} payment info</ion-toggle>
+      <button id="reload-button12" ng-click="submit()" class="button button-balanced button-block">{{ output }}</button>
     </form>
   </ion-content>
 </ion-view>

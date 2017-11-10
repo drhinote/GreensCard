@@ -4,15 +4,13 @@
       <ion-toggle toggle-class="toggle-balanced" id="capture-toggle1" name="transType" ng-model="out.refund">{{ (out.refund?"Refund":"Sale") }}</ion-toggle>
       <label class="item item-input" id="capture-input7">
         <span class="input-label">Amount</span>
-        <input type="number" placeholder="$" ng-model="out.amount">
+        <input type="number" placeholder="$" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/" min="0.01" max="500">
       </label>
-      <button id="capture-button4" ng-click="manualRequest()" class="button button-light button-block button-clear icon-right ion-android-send">Request Payment</button>
       <label class="item item-input item-floating-label" id="capture-input9">
-        <input type="text" placeholder="Greens Code" ng-model="out.slot" ng-change="dash()">
+        <input type="text" placeholder="Greens Code" ng-model="out.slot" ng-show="out.amount">
       </label>
+      <button id="capture-button4" ng-click="manualRequest(out.slot)" ng-show="out.slot" class="button button-balanced button-block icon-right ion-android-send">Request Payment</button>
+      <button id="capture-button13" ng-show="output" style="color:#192F24;" class="button button-energized button-block">{{ output }}</button>
     </form>
-    <div id="capture-markdown9" style="text-align:center;" class="show-list-numbers-and-dots">
-      <p style="color:#ACDAB9;font-size:19px;">{{ output }}</p>
-    </div>
   </ion-content>
 </ion-view>

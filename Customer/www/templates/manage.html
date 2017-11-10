@@ -8,6 +8,7 @@
         <strong>{{ info.value.balance }}</strong>
       </p>
     </div>
+    <button id="manage-button13" ng-click="refreshBalance(info.value)" class="button button-balanced button-small button-block button-outline icon ion-android-refresh"> Refresh Balance</button>
     <ion-list id="manage-list5">
       <ion-item class="item-divider" id="manage-list-item-divider5"> Recent Transactions</ion-item>
       <ion-item id="manage-list-item18" ng-repeat="transaction in transactions.value">{{ printPretty(transaction) }}

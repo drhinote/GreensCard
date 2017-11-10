@@ -1,0 +1,18 @@
+<ion-view title="Capture" hide-nav-bar="true" cache-view="false" nav-transition="none" id="page8" style="background-color:none;" class="secured">
+  <ion-content padding="true" class="manual-ios-statusbar-padding">
+    <form id="capture-form5" class="list">
+      <ion-toggle toggle-class="toggle-balanced" id="capture-toggle1" name="transType" ng-model="out.refund">{{ (out.refund?"Refund":"Sale") }}</ion-toggle>
+      <label class="item item-input" id="capture-input7">
+        <span class="input-label">Amount</span>
+        <input type="number" placeholder="$" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
+      </label>
+      <button id="capture-button4" ng-click="manualRequest()" class="button button-light button-block button-clear icon-right ion-android-send">Request Payment</button>
+      <label class="item item-input item-floating-label" id="capture-input9">
+        <input type="text" placeholder="Greens Code" ng-model="out.slot">
+      </label>
+    </form>
+    <div id="capture-markdown9" style="text-align:center;" class="show-list-numbers-and-dots">
+      <p style="color:#ACDAB9;font-size:19px;">{{ output }}</p>
+    </div>
+  </ion-content>
+</ion-view>

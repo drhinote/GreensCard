@@ -1,13 +1,13 @@
-<ion-view title="Buy" hide-nav-bar="true" cache-view="false" id="page2" style="background-color:#FFFFFF;" class="secured">
+<ion-view title="Buy" hide-nav-bar="true" cache-view="false" id="page2" style="background-color:#FFFFFF;">
   <ion-content padding="true" class="manual-ios-statusbar-padding">
     <div id="buy-markdown16" class="show-list-numbers-and-dots">
       <p style="color:#006938;">Balance:
         <strong>{{ info.value.balance }}</strong>
       </p>
     </div>
-    <div div="" align="center" style="background-color: #FFF;">
+    <div div="" align="center" ng-style="myStyle">
       <br>
-      <div div="" align="center" id="qrcode"></div>
+      <div align="center" id="qrcode"></div>
       <br>
     </div>
     <div class="spacer" style="width: 300px; height: 14px;"></div>
@@ -15,7 +15,7 @@
       <p style="color:#006938;">Greens Code:</p>
 
       <blockquote>
-        <p style="color:#006938;">{{ info.value.slot }}</p>
+        <p style="color:#006938;">{{ addSpaces(slot.value) }}</p>
       </blockquote>
     </div>
     <div style="margin-right:-20px;">

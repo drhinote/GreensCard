@@ -1,54 +1,110 @@
-﻿angular.module('app.controllers', [])
+angular.module('app.controllers', [])
   
-.controller('withdrawCtrl', ['$scope', '$state', '$http', '$stateParams', 'dogejs', // The following is the constructor function for this page's controller. See https://docs.angularjs.org/guide/controller
+.controller('withdrawCtrl', ['$scope', '$state', '$http', '$stateParams', 'dogejs', '$timeout', // The following is the constructor function for this page's controller. See https://docs.angularjs.org/guide/controller
 // You can include any angular dependencies as parameters for this function
 // TIP: Access Route Parameters for your page via $stateParams.parameterName
-function ($scope, $state, $http, $stateParams, dogejs) {
+function ($scope, $state, $http, $stateParams, dogejs, $timeout) {
 if(!firebase.auth().currentUser) $state.go("login"); 
-$scope.out = { }
-$scope.output = "Withdraw";
+$scope.out = { };
+$scope.out.output = "Withdraw";
+$scope.out.tipOutput = "Withdraw Gratuities";
 $scope.info = dogejs.info;
 
+var feeConfig;
+dogejs.getWithdrawConfig(c => feeConfig = c);
+var flatFee = 0;
+var feeFee = 0;
+$scope.$watch("out.amount", newVal => {
+    if(feeConfig) {
+        flatFee = parseFloat((feeConfig.withdrawalFlatFee ? parseFloat(feeConfig.withdrawalFlatFee) : 0.0).toFixed(2));
+   //     feeFee = parseFloat((feeConfig.withdrawalPercent ? parseFloat($scope.out.amount) - (parseFloat($scope.out.amount) / ((parseFloat(feeConfig.withdrawalPercent) / 100.0) + 1)) : 0.0).toFixed(2));
+        feeFee = parseFloat((feeConfig.withdrawalPercent ?  parseFloat($scope.out.amount) * parseFloat(feeConfig.withdrawalPercent) / 100.0 : 0.0).toFixed(2));
+        $scope.fee = $scope.out.amount? (feeFee + flatFee).toFixed(2) : null;
+    }
+});
+
 $scope.submit = function() {
-    var amount = $scope.out.amount;
-    if(amount > 0 && amount <= dogejs.info.value.balance + 0.01) {
-        $scope.out.amount = undefined
-            $scope.output = 'Withdrawing...'
-        dogejs.withdraw(amount, function(res) {
+    var amount = parseFloat($scope.out.amount);
+    if(amount > 0 && amount <= parseFloat($scope.info.value.balance)) {
+            $scope.out.output = 'Withdrawing...';
+            dogejs.withdraw(amount, flatFee, feeFee, function(res) {
             if(res.success) {
-                $scope.output = 'Withdraw'
-                $state.go('home.manage_tab1');
+                $scope.out.amount = undefined;
+                $scope.out.output = 'Withdraw Successful';
             }
             else
             {
-                $scope.output = 'Withdrawal failed'
+                $scope.out.amount = undefined;
+                $scope.out.output = 'Withdrawal delayed, check back later';
             }
-        })
+            $timeout(function() {
+                    $scope.out.output = 'Withdraw';
+            }, 3000);
+        });
     }
     else {
-        $scope.output = 'Check requested amount';
+        $scope.out.output = 'Check requested amount';
+         $timeout(function() {
+                    $scope.out.output = 'Withdraw';
+            }, 3000);
     }
-}
+};
 
+$scope.submitTips = function() {
+    var amount = parseFloat($scope.out.tipAmount);
+    if(amount > 0 && amount <= parseFloat($scope.info.value.tipsBal)) {
+            $scope.out.tipOutput = 'Withdrawing...';
+            dogejs.withdrawTips(amount, function(res) {
+            if(res.success) {
+                $scope.out.tipAmount = undefined;
+                $scope.out.tipOutput = 'Withdraw Successful';
+            }
+            else
+            {
+                $scope.out.tipAmount = undefined;
+                $scope.out.tipOutput = 'Withdrawal delayed, check back later';
+            }
+            $timeout(function() {
+                    $scope.out.tipOutput = 'Withdraw Gratuities';
+            }, 3000);
+        });
+    }
+    else {
+        $scope.out.tipOutput = 'Check requested amount';
+         $timeout(function() {
+                    $scope.out.tipOutput = 'Withdraw Gratuities';
+            }, 3000);
+    }
+};
 }])
       
-.controller('loginCtrl', ['$scope', '$stateParams', '$state', 'ui', 'dogejs', // The following is the constructor function for this page's controller. See https://docs.angularjs.org/guide/controller
-// You can include any angular dependencies as parameters for this function
-// TIP: Access Route Parameters for your page via $stateParams.parameterName
-
-//username	unique username
-//email	unique email address
-//password	write-only password
-//name	first and last name
-//image	url to identifying image
-
+.controller('loginCtrl', ['$scope', '$stateParams', '$state', 'ui', 'dogejs', 
 function ($scope, $stateParams, $state, ui, dogejs) {
-    
+    dogejs.setMerchant(true);
     firebase.auth().onAuthStateChanged(function(user) {
     if(user) {
-        dogejs.signIn(user, function() {
-            $state.go("home.manage");
-        })
+        firebase.database().ref('merchants/' + user.uid + '/approved').once('value').then(function(s) {
+        var approved = s.val();    
+            dogejs.signIn(user, function(bal) {
+                if(approved) {
+                    $state.go("home.manage");
+                } else {
+                    var mRef = firebase.database().ref('merchants/' + user.uid);
+                    mRef.set({
+                       email: user.email,
+                       uid: user.uid,
+                       approved: false
+                    });
+                       var shell = document.getElementById('firebaseui-auth-container');
+                shell.innerHTML = '<br/>&nbsp;&nbsp;Merchant account request has been submitted and is under review.   You will be contacted by one of our staff to complete the application process.';
+                    mRef.on('value', s => {
+                        if(s.exists() && s.child('approved').val()) {
+                              $state.go("home.manage");
+                        } 
+                    });
+                }
+            });
+        });
     }
     else {
         dogejs.signOut();
@@ -71,17 +127,17 @@ function ($scope, $stateParams, $state, ui, dogejs) {
        //   firebase.auth.GoogleAuthProvider.PROVIDER_ID,
     //      firebase.auth.FacebookAuthProvider.PROVIDER_ID
         ],
-        tosUrl: 'https://greens.cards/terms.html'
+        tosUrl: 'https://greens.cards/templates/termsOfService.html'
       };
       
       
       ui.start('#firebaseui-auth-container', uiConfig);
 }])
    
-.controller('captureCtrl', ['$scope', '$state', '$stateParams', '$http', '$location', 'dogejs', // The following is the constructor function for this page's controller. See https://docs.angularjs.org/guide/controller
+.controller('captureCtrl', ['$scope', '$state', '$stateParams', '$http', '$location', 'dogejs', '$timeout', // The following is the constructor function for this page's controller. See https://docs.angularjs.org/guide/controller
 // You can include any angular dependencies as parameters for this function
 // TIP: Access Route Parameters for your page via $stateParams.parameterName
-function ($scope, $state, $stateParams, $http, $location, dogejs) {
+function ($scope, $state, $stateParams, $http, $location, dogejs, $timeout) {
 
     if(!firebase.auth().currentUser) $state.go("login");
     
@@ -89,119 +145,151 @@ function ($scope, $state, $stateParams, $http, $location, dogejs) {
    $scope.out = {};
    $scope.out.refund = false;
    var once = 3
-    $scope.dash = function() {
-        if(!$scope.out.slot.includes('-') && $scope.out.slot.length >= once) {
-            once = 4;
-            var tstr = $scope.out.slot;
-            $scope.out.slot = tstr.substring(0,3) + '-';
-            if(tstr.length > 3) {
-                $scope.out.slot += tstr.slice(3);
-            }
+   var dash = function(tstr) {
+        if(!tstr.includes('-') && tstr.length == 6) {
+            return tstr.substr(0,3) + '-' + tstr.slice(3);
         }
-        if($scope.out.slot.length < 4) {
-            once = 3;
-        }
-    }
-   $scope.manualRequest = function() {
-         if(($scope.out.amount || 0) <= 0 || ($scope.out.amount || 0) > 500) {
-            $scope.output = "Amount must be in between $0 and $500";
-         }
-         else if(!$scope.out.slot) {
+    };
+   $scope.manualRequest = function(text) {
+      if(!$scope.out.amount) {
+            $scope.output = "Amount must be in between 0 and 500";
+        } else if(!text) {
             $scope.output = "Missing Greens Code";
         }
         else
         {
+            $scope.output = "";
             var amount = $scope.out.amount;
             var refund = $scope.out.refund;
-            var slot = $scope.out.slot;
-            $scope.out.amount = undefined
-            $scope.out.refund = false
-            $scope.out.slot = undefined
+            $scope.out.slot = undefined;
+            $scope.out.amount = undefined;
+            $scope.out.refund = false;
             
             if(refund)
             {
-                dogejs.sendRefund(slot, amount, $scope);
+                dogejs.sendRefund(text, amount, function(txt) {
+                    $scope.output = txt;
+                 });
             }
             else 
             {
-                dogejs.waitForPayment(slot, amount, function(txt) {
-                    $scope.output = txt;
+                dogejs.waitForPayment(text, amount, function(txt) {
+                    $scope.$apply($scope.output = txt);
                 });
             }
         }
    };
    
-    var checkInput = function(text) {
-       if((typeof text == "string") && (text || '').contains("?code=")) {
-            $scope.out.envelope = text.replace(/.*\?code=/,"");
-            $scope.manualRequest();
+    var last = '';
+    
+    var scann = function (err, text) {
+            if(!err && last != text) {
+                
+            
+                    last = text;
+                    scanning = false;
+                    QRScanner.hide();
+                    $scope.manualRequest(text);
+            }
+            else {
+                console.log("Code scanned twice or error: " + JSON.stringify(err));
+            }
+          
+    };
+       try {
+      var scanning = false;
+    window.QRScanner_SCAN_INTERVAL = 600;
+    
+        QRScanner.scan(scann);
+    $scope.$watch("out.amount", val => {
+           if(scanning === false && val) {
+                scanning = true;
+                QRScanner.show();
+            }
+  
+    });
+       } catch(e) {
+           $scope.output = "Scanner disabled";
         }
-   }
-   
-    if($location.search) {
-        checkInput($location.search);
-    }
-   
-   try {
-        QRScanner.scan(function (err, text){
-          if(!err) {
-              checkInput(text);
-          }
-        });
-        QRScanner.show();
-   } catch(e) {
-       console.log(e);
-       $scope.output = "Scanner disabled";
-   }
 }])
    
-.controller('manageCtrl', ['$scope', '$stateParams', '$state', '$http', 'dogejs', 
-function ($scope, $stateParams, $state, $http, dogejs) {
+.controller('manageCtrl', ['$scope', '$stateParams', '$state', '$http', 'dogejs', '$timeout', 
+function ($scope, $stateParams, $state, $http, dogejs, $timeout) {
     if(!firebase.auth().currentUser) $state.go("login");
+    
+    dogejs.manageScope.value = $scope;
   
+    dogejs.getTips(val => $scope.tipping = val);
+    
+    $scope.setTips = dogejs.setTips;
+    
     $scope.info = dogejs.info;
     $scope.transactions = dogejs.transactions;
     
     var shortDate = function(date) {
-        var tz = new Date().getTimezoneOffset();
-        var hour = (date.getHours() + 1);
-        var minute = date.getMinutes() + 1;
+        var hour = date.getHours();
+        var minute = date.getMinutes();
+        if(minute < 10) {
+            minute = '0' + minute;
+        }
         var part = 'am';
+        if(hour > 11) {
+            part = 'pm';
+        }
         if(hour > 12) {
             hour -= 12;
-            part = 'pm';
         }
         var year = new Date().getFullYear() === date.getFullYear()?'':('/' + date.getYear());
         return (date.getMonth() + 1) + "/" + date.getDate() + year + " at " + hour + ":" + minute + " " + part; // getMonth() is zero-based
     }
     
-    $scope.makeNote = function(trans) {
-        if(trans.from.uid == dogejs.info.value.uid) 
-           return "me -> " + (trans.to.email || "tgc") 
-        else
-            return "me <- " + (trans.from.email || "tgc") 
-    }
-    
+   
     var cap = function(string) {
         return string.charAt(0).toUpperCase() + string.slice(1);
     }
     
     $scope.printPretty = function(trans) {
-        return cap(trans.type) + " " + trans.amount.toFixed(2) + " on " + shortDate(new Date(trans.date));
+        if(trans.processingRefund) trans.note = "Refund in progress";
+        if(trans.from.uid == dogejs.info.value.uid) 
+           trans.note = "me -> " + (trans.to.email || "help@greens-card.com") 
+        else
+            trans.note = "me <- " + (trans.from.email || "help@greens-card.com") 
+        return cap(trans.type) + " " + trans.amount.toFixed(2) + (trans.tip>0?"+"+trans.tip.toFixed(2):"") + " on " + shortDate(new Date(trans.date));
     }
    
    $scope.logout = function() {  firebase.auth().signOut().then(function() { $state.go("login"); }) };
-
+$scope.refreshBalance = dogejs.doubleCheck;
 $scope.refund = function(trans) {
-    dogejs.refundTransaction(trans, $scope, function(res) {
-        if(res.success) $scope.output = "Transaction refunded";
-        else $scope.output = res.message;
-    })
+    trans.processingRefund = true;
+    trans.note = "Processing Refund"
+    $timeout(() => {
+    dogejs.refundTransaction(trans, function(res) {
+        delete trans.processingRefund;
+        if(res.success) {
+            trans.note ="Transaction refunded";
+            trans.refunded = true;
+        }
+        else {
+            trans.note = "Refund failed";
+        }
+        } )
+        
+    });
 }
+
+    
 
 }
   
 
 
 ])
+   
+.controller('termsOfServiceCtrl', ['$scope', '$stateParams', // The following is the constructor function for this page's controller. See https://docs.angularjs.org/guide/controller
+// You can include any angular dependencies as parameters for this function
+// TIP: Access Route Parameters for your page via $stateParams.parameterName
+function ($scope, $stateParams) {
+
+
+}])
  

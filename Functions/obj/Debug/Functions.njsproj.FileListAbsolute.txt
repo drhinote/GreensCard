@@ -1,0 +1,2 @@
+C:\Users\drhin\OneDrive\theGreensCard\functions\obj\Debug\Functions.njsprojResolveAssemblyReference.cache
+C:\Users\drhin\OneDrive\theGreensCard\functions\bin\Microsoft.NodejsTools.WebRole.dll

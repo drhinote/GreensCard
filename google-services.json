@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "130094297488",
+    "firebase_url": "https://greenscard-177506.firebaseio.com",
+    "project_id": "greenscard-177506",
+    "storage_bucket": "greenscard-177506.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:130094297488:android:0a440502582c34b3",
+        "android_client_info": {
+          "package_name": "cards.greens"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "130094297488-6vvpsedfpqmh9uovdk4vlgo9eknc92nh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "cards.greens",
+            "certificate_hash": "7dc13b6d0c858a9131b7e7e29ca325e1b084c5d0"
+          }
+        },
+        {
+          "client_id": "130094297488-gms9k0qv3pjfrfbn5gsqo72u9i1ejj2q.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC71X_VdPEQp_AHTixY31AbWeAvuE8ieC4"
+        }
+      ],
+      "services": {
+        "analytics_service": {
+          "status": 1
+        },
+        "appinvite_service": {
+          "status": 2,
+          "other_platform_oauth_client": [
+            {
+              "client_id": "130094297488-gms9k0qv3pjfrfbn5gsqo72u9i1ejj2q.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        },
+        "ads_service": {
+          "status": 2
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

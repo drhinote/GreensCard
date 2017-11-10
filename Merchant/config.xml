@@ -77,11 +77,20 @@
         <splash height="960" src="resources/ios/splash/Default@2x~iphone.png" width="640" />
         <splash height="480" src="resources/ios/splash/Default~iphone.png" width="320" />
     </platform>
+    <vs:toolsetVersion xmlns:vs="http://schemas.microsoft.com/appx/2014/htmlapps">6.3.1</vs:toolsetVersion>
+    <preference name="windows-target-version" value="10.0" />
     <engine name="android" spec="^6.2.3" />
-    <engine name="browser" spec="^4.1.0" />
-    <plugin name="cordova-plugin-console" spec="^1.0.5" />
+    <engine name="ios" spec="4.2.0" />
+    <engine name="windows" spec="4.4.2" />
+    <engine name="browser" spec="^5.0.1" />
+    <plugin name="cordova-plugin-qrscanner" spec="^2.5.0" />
     <plugin name="cordova-plugin-device" spec="^1.1.4" />
+    <plugin name="cordova-plugin-console" spec="^1.0.5" />
     <plugin name="cordova-plugin-inappbrowser" spec="^1.7.1" />
+    <plugin name="cordova-plugin-whitelist" spec="^1.3.1" />
+    <plugin name="cordova-plugin-splashscreen" spec="^4.0.3" />
+    <plugin name="cordova-plugin-statusbar" spec="^2.2.1" />
+    <plugin name="ionic-plugin-keyboard" spec="^2.2.1" />
     <plugin name="cordova-plugin-ionic" spec="^1.1.8">
         <variable name="APP_ID" value="03645a43" />
         <variable name="CHANNEL_NAME" value="Master" />
@@ -89,9 +98,4 @@
         <variable name="UPDATE_API" value="https://api.ionicjs.com" />
         <variable name="MAX_STORE" value="2" />
     </plugin>
-    <plugin name="cordova-plugin-qrscanner" spec="^2.5.0" />
-    <plugin name="cordova-plugin-splashscreen" spec="^4.0.3" />
-    <plugin name="cordova-plugin-statusbar" spec="^2.2.1" />
-    <plugin name="cordova-plugin-whitelist" spec="^1.3.1" />
-    <plugin name="ionic-plugin-keyboard" spec="^2.2.1" />
 </widget>

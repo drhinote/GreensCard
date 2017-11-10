@@ -51,6 +51,28 @@ angular.module('app.routes', [])
     }
   })
 
+  .state('termsOfService', {
+    url: '/terms',
+    templateUrl: 'templates/termsOfService.html',
+    controller: 'termsOfServiceCtrl'
+  })
+
+  .state('page8', {
+    url: '/deposit',
+	params: {
+		saveInfo: "",
+		amount: ""		
+},
+    templateUrl: 'templates/page8.html',
+    controller: 'page8Ctrl'
+  })
+
+  .state('page', {
+    url: '/page9',
+    templateUrl: 'templates/page.html',
+    controller: 'pageCtrl'
+  })
+
 $urlRouterProvider.otherwise('/login')
 
 
