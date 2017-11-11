@@ -141,7 +141,7 @@ function ($scope, $state, $stateParams, $http, $location, dogejs, $timeout) {
 
     if(!firebase.auth().currentUser) $state.go("login");
     
-   $scope.output = "";
+   $scope.output = undefined;
    $scope.out = {};
    $scope.out.refund = false;
    var once = 3
@@ -152,13 +152,20 @@ function ($scope, $state, $stateParams, $http, $location, dogejs, $timeout) {
     };
    $scope.manualRequest = function(text) {
       if(!$scope.out.amount) {
-            $scope.output = "Amount must be in between 0 and 500";
+            $scope.output = "'Amount must be in between 0 and 500'";
+               $timeout(() => {
+                    $scope.output = undefined;
+                 
+                   }, 3000);
         } else if(!text) {
-            $scope.output = "Missing Greens Code";
+            $scope.output = "'Missing Greens Code'";
+              $timeout(() => {
+                    $scope.output = undefined;
+                   }, 3000);
         }
         else
         {
-            $scope.output = "";
+            $scope.output = undefined;
             var amount = $scope.out.amount;
             var refund = $scope.out.refund;
             $scope.out.slot = undefined;
@@ -169,12 +176,13 @@ function ($scope, $state, $stateParams, $http, $location, dogejs, $timeout) {
             {
                 dogejs.sendRefund(text, amount, function(txt) {
                     $scope.output = txt;
+                    
                  });
             }
             else 
             {
                 dogejs.waitForPayment(text, amount, function(txt) {
-                    $scope.$apply($scope.output = txt);
+                    $scope.output = txt;
                 });
             }
         }
@@ -183,34 +191,28 @@ function ($scope, $state, $stateParams, $http, $location, dogejs, $timeout) {
     var last = '';
     
     var scann = function (err, text) {
-            if(!err && last != text) {
-                
-            
-                    last = text;
-                    scanning = false;
-                    QRScanner.hide();
-                    $scope.manualRequest(text);
-            }
-            else {
-                console.log("Code scanned twice or error: " + JSON.stringify(err));
-            }
-          
+        if(text &&  $scope.out.amount) {
+            QRScanner.destroy();
+            $state.go("home.capture",  { code: text, amount: $scope.out.amount });
+        } else if(text) {
+            $scope.out.slot = text;
+        } 
     };
        try {
-      var scanning = false;
-    window.QRScanner_SCAN_INTERVAL = 600;
-    
-        QRScanner.scan(scann);
-    $scope.$watch("out.amount", val => {
-           if(scanning === false && val) {
-                scanning = true;
-                QRScanner.show();
-            }
-  
-    });
+   window.QRScanner_SCAN_INTERVAL = 600;
+        if($stateParams.code.length > 1 && parseFloat($stateParams.amount) > 0) {
+            $scope.out.amount = parseFloat($stateParams.amount);
+            $scope.out.slot = $stateParams.code;
+            $scope.manualRequest($stateParams.code);
+          
+        }
+        
+              QRScanner.scan(scann);
        } catch(e) {
            $scope.output = "Scanner disabled";
         }
+        
+        
 }])
    
 .controller('manageCtrl', ['$scope', '$stateParams', '$state', '$http', 'dogejs', '$timeout', 

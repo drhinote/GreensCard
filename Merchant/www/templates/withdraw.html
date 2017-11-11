@@ -12,7 +12,7 @@
     <form id="withdraw-form4" class="list">
       <label class="item item-input" id="withdraw-input14" name="amount">
         <span class="input-label">$</span>
-        <input type="number" placeholder="Withdrawl Amount" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
+        <input type="number" placeholder="Amount" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
       </label>
       <div class="spacer" style="width: 320px; height: 12.9886px;"></div>
       <div id="withdraw-markdown10" class="show-list-numbers-and-dots">
@@ -29,7 +29,7 @@
         </div>
         <label class="item item-input" id="withdraw-input10" name="tipAmount">
           <span class="input-label">$</span>
-          <input type="number" placeholder="Withdrawl Amount" ng-model="out.tipAmount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
+          <input type="number" placeholder="Amount" ng-model="out.tipAmount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
         </label>
       </form>
       <button id="withdraw-button11" ng-click="submitTips()" class="button button-balanced button-block">{{ out.tipOutput }}</button>

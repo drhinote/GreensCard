@@ -54,7 +54,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             };
             websocket.onopen = function (event) {
                 websocket.send(JSON.stringify({ event: "unconfirmed-tx" }));
-
+                ping();
             };
 
             websocket.onclose = function (event) {
@@ -62,6 +62,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 reopen();
             };
         };
+        reopen();
 
         var logoff = function () {
             settled = 0;
@@ -102,7 +103,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 }
             });
         }
-        
+
         /*
         var getSettledBalance = (callback) => {
             $http({ url: 'https://dogechain.info/api/v1/unspent/' + wallet.address }).then(function (result) {
@@ -258,65 +259,70 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 s.ref.child('spent').set('true').then(() => {
 
                     if (bucket.spent) return;
-                    s.ref.child('message').set("Waiting for the customer's response");
-                    var fee = bucket.fee ? parseFloat(bucket.fee) : 0.0;
-                    var bal = checkBalance();
+                    getSettledBalance(bal => {
 
-                    if ((bucket.amount + fee) <= bal) {
-                        ask(bucket, function (approved) {
-                            if (approved) {
-                                s.ref.update({
-                                    title: "Payment approved",
-                                    processing: true,
-                                    message: "The payment will be on it's way soon"
-                                });
-                                var rand = Math.random() * 100;
-                                bucket.tip = parseFloat(bucket.tip).toPrecision(2);
-                                var trans = blindTrans(info.value, bucket.to, bucket.amount, 'payment', (bucket.tip > 0 && bucket.tip + bucket.amount + fee <= bal) ? bucket.tip : 0, { transactionFee: fee }, bucket.to.uid, info.value.uid);
-                                send(trans).then(() => {
-                                    s.ref.update({
-                                        title: "Payment Complete",
-                                        processing: false,
-                                        completed: true,
-                                        message: "Thank you for using our service" + (rand > 98.0 ? ", I'm getting a little verklempt!" : "")
-                                    });
-                                    if (fee > 0) {
-                                        var feeTrans = blindTrans(info.value, feeWallet, fee, 'fee', 0, { transaction: trans }, "master", info.value.uid);
-                                        send(feeTrans);
-                                    }
-                                    if (bucket.tip > 0 && bucket.tip + bucket.amount + fee <= bal) {
-                                        var tipTrans = blindTrans(info.value, bucket.tipTo, bucket.tip, 'tip', 0, { transaaction: trans }, "tip" + bucket.to.uid, info.value.uid);
-                                        send(tipTrans);
-                                    }
-                                }).catch(err => {
-                                    s.ref.update({
-                                        title: "Payment Failed",
-                                        processing: false,
-                                        failed: true,
-                                        message: "There was some kind of error: " + err
-                                    });
-                                    console.log(err);
-                                });
-                            }
-                            else {
-                                s.ref.update({
-                                    declined: true,
-                                    title: "Payment Declined",
-                                    message: "Well, the customer said no"
-                                });
-                            }
+                        checkBalance();
+                        s.ref.child('message').set("Waiting for the customer's response");
+                        var fee = bucket.fee ? parseFloat(bucket.fee) : 0.0;
+                        var total = parseFloat(bucket.amount) + parseFloat(fee);
 
-                        });
-                    } else {
-                        s.ref.update({
-                            title: "Payment Error",
-                            processing: false,
-                            completed: false,
-                            failed: true,
-                            message: "Insufficient funds"
-                        });
-                    }
+                        if (total <= parseFloat(info.value.balance)) {
+                            ask(bucket, function (approved) {
+                                if (approved) {
+                                    s.ref.update({
+                                        title: "Payment approved",
+                                        processing: true,
+                                        message: "The payment will be on it's way soon"
+                                    });
+                                    var rand = Math.random() * 100;
+                                    var tip = parseFloat(bucket.tip);
+                                    var trans = blindTrans(info.value, bucket.to, bucket.amount, 'payment', (tip + total <= parseFloat(info.value.balance)) ? tip : 0, { transactionFee: fee }, bucket.to.uid, info.value.uid);
+                                    send(trans).then(() => {
+                                        s.ref.update({
+                                            title: "Payment Complete",
+                                            processing: false,
+                                            completed: true,
+                                            message: "Thank you for using our service" + (rand > 98.0 ? ", I'm getting a little verklempt!" : "")
+                                        });
+                                        if (fee > 0) {
+                                            var feeTrans = blindTrans(info.value, feeWallet, fee, 'fee', 0, { transaction: trans }, "master", info.value.uid);
+                                            send(feeTrans);
+                                        }
+                                        if (bucket.tip > 0 && bucket.tip + bucket.amount + fee <= bal) {
+                                            var tipTrans = blindTrans(info.value, bucket.tipTo, tip, 'tip', 0, { transaaction: trans }, "tip" + bucket.to.uid, info.value.uid);
+                                            send(tipTrans);
+                                        }
+                                    }).catch(err => {
+                                        s.ref.update({
+                                            title: "Payment Failed",
+                                            processing: false,
+                                            failed: true,
+                                            message: "There was some kind of error: " + err
+                                        });
+                                        console.log(err);
+                                    });
+                                }
+                                else {
+                                    s.ref.update({
+                                        declined: true,
+                                        title: "Payment Declined",
+                                        message: "Well, the customer said no"
+                                    });
+                                }
+
+                            });
+                        } else {
+                            s.ref.update({
+                                title: "Payment Error",
+                                processing: false,
+                                completed: false,
+                                failed: true,
+                                message: "Insufficient funds"
+                            });
+                        }
+                    });
                 });
+
             }
 
         };
@@ -507,176 +513,176 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 });
 
             },
-cancel: function (callback) {
-    cancelRef = firebase.database().ref('control/' + info.value.uid + '/cancel');
-    cancelRef.on('value', function (s) {
-        var ok = s.val();
-        if (ok) {
-            if (continueRef) {
-                continueRef.off();
-                continueRef.remove();
-            }
-            if (cancelRef) {
-                cancelRef.off();
-                cancelRef.remove();
-            }
-            callback();
-        }
-    });
-},
-continue: function (callback) {
-    continueRef = firebase.database().ref('control/' + info.value.uid + '/continue');
-    continueRef.on('value', function (s) {
-        var ok = s.val();
-        if (ok) {
-            if (continueRef) {
-                continueRef.off();
-                continueRef.remove();
-            }
-            if (cancelRef) {
-                cancelRef.off();
-                cancelRef.remove();
-            }
-            callback();
-        }
-    });
-},
-controlOff: function () {
-    if (continueRef) {
-        continueRef.off();
-        continueRef.remove();
-    }
-    if (cancelRef) {
-        cancelRef.off();
-        cancelRef.remove();
-    }
-},
-setSaveProfile: function (value) {
-    firebase.database().ref("email2uid/" + info.value.email.replace("@", "-").replace(".", "_") + "/saveInfo").set(value);
-},
-getDepositToken: function (amount, callback) {
-    $http({
-        url: 'https://us-central1-greenscard-177506.cloudfunctions.net/getToken',
-        method: 'POST',
-        data: {
-            amount: amount,
-            email: info.value.email,
-            uid: info.value.uid
-        }
-    }).then(function (token) {
-        if (token.data && token.data.length > 1000) {
-            callback({ success: true, message: token.data });
-        }
-        else {
-            callback({ success: false, message: "Error getting payment form" });
-        }
-    });
-},
-refundTransaction: function (trans, cb) {
-    if (trans.to.uid == info.value.uid) {
-        var fee = (trans.details && trans.details.transactionFee) ? parseFloat(trans.details.transactionFee) : 0.0;
-        var trans2 = blindTrans(info.value, trans.from, parseFloat(trans.amount), 'refund', -(parseFloat(trans.tip) || 0), { transactionFee: fee }, info.value.uid, trans.from.uid);
-        send(trans2, function (res) {
-            if (res.success) {
-                var time = Number.MAX_SAFE_INTEGER - new Date(trans.date).getTime();
-                firebase.database().ref('transactions/' + time + '/refunded').set('true');
-                if (fee > 0) {
-                    var feeTrans = blindTrans(feeWallet, trans.from, fee, 'fee Refund', 0, { transaction: trans2 }, "master", trans.from.uid);
-                    send(feeTrans, function (res2) { });
-                }
-                if (trans.tip > 0) {
-                    var tipRefundFrom = { email: info.value.email, address: tipWallet.address, account: tipWallet.account, uid: "tip" + info.value.uid };
-                    var tipTrans = blindTrans(tipRefundFrom, trans.from, trans.tip, 'tip Refund', 0, { transaction: trans2 }, "tip" + info.value.uid, trans.from.uid);
-                    send(tipTrans);
-                }
-            }
-            cb(res);
-        })
-    }
-},
-sendRefund: function (slot, amount, cb) {
-    var tempSlot = firebase.database().ref('slots/' + slot);
-    tempSlot.once('value').then(function (s) {
-        var elSlot = s.val();
-        tempSlot.remove();
-        if (elSlot.uid == info.value.uid) {
-            if (cb) cb("Please don't try to send yourself a payment, it will break the internet...");
-            return;
-        }
-        var trans = blindTrans(info.value, elSlot, amount, 'refund', 0, { transactionFee: 0.0 }, info.value.uid, elSlot.uid);
-        send(trans, function (res) {
-            if (res.success) {
-                cb("Refund complete");
-            }
-        })
-    })
-},
-waitForPayment: function (slot, amount, cb) {
-
-    var tempSlot = firebase.database().ref('slots/' + slot);
-    tempSlot.once('value').then(function (s) {
-        var elSlot = s.val();
-        if (!elSlot || !elSlot.uid) {
-            if (cb) cb("Invalid greens code, please try again");
-            return;
-        }
-        tempSlot.remove();
-        if (elSlot.uid == info.value.uid) {
-            if (cb) cb("Can not request payment from that account");
-            return;
-        }
-
-        var parent = $rootScope;
-        var child = parent.$new(true);
-
-        firebase.database().ref('merchants/' + info.value.uid).once('value').then(t => {
-            var feeConfig = t.val();
-            var te = feeConfig.tipsEnabled;
-            if (!feeConfig) {
-                feeConfig = defaultConfig.value;
-            } else {
-                if (!(feeConfig.transactionFlatFee || parseFloat(feeConfig.transactionFlatFee) === 0)) {
-                    feeConfig.transactionFlatFee = defaultConfig.value.transactionFlatFee;
-                }
-                if (!(feeConfig.transactionPercent || parseFloat(feeConfig.transactionPercent) === 0)) {
-                    feeConfig.transactionPercent = defaultConfig.value.transactionPercent;
-                }
-            }
-
-            child.bucket = $firebaseObject(firebase.database().ref("buckets/" + elSlot.uid).push({
-                active: slot,
-                amount: amount,
-                pct5: parseFloat((amount * 0.05).toFixed(2)),
-                pct10: parseFloat((amount * 0.10).toFixed(2)),
-                pct15: parseFloat((amount * 0.15).toFixed(2)),
-                pct20: parseFloat((amount * 0.20).toFixed(2)),
-                tip: 0,
-                fee: feeConfig ? ((feeConfig.transactionPercent ? parseFloat(amount) * (parseFloat(feeConfig.transactionPercent) / 100.0) : 0.0) + (feeConfig.transactionFlatFee ? parseFloat(feeConfig.transactionFlatFee) : 0.0)).toFixed(2) : null,
-                processing: false,
-                completed: false,
-                failed: false,
-                declined: false,
-                to: { email: info.value.email, address: wallet.address, uid: info.value.uid },
-                tipTo: { email: info.value.email, address: tipWallet.address, uid: "tip" + info.value.uid },
-                tipsEnabled: te,
-                message: "If this message doesn't change for more than 30 seconds, press 'Go Back' and retry the payment.",
-                title: "Request Sent"
-            }));
-
-            child.bucket.$loaded().then(function () {
-                child.modal = $ionicModal.fromTemplate('<ion-modal-view><ion-content><br/><br/><h3>{{ bucket.title }}</h3><br/><br/><p>{{ bucket.message }}</p><br/><br/><button class="button button-light button-block" ng-click="close()" ng-show="bucket.processing">Payment in Progress</button><button class="button button-balanced button-block icon-left ion-android-checkmark-circle" ng-click="close()" ng-show="bucket.completed">Payment complete</button><button class="button button-energized button-block icon-left ion-alert-circled"  ng-click="close()" ng-show="bucket.declined">Payment Declined</button><button class=button button-balanced button-block icon-leftion-alert-circled"  ng-click="close()" ng-show="bucket.failed">Payment Error</button><button ng-click="close()" ng-show="!(bucket.declined||bucket.completed||bucket.failed)" class="button button-balanced button-block icon-left ion-close">Go Back</button><div ng-show="false" id="firebaseui-auth-container"></div></ion-content></ion-modal-view>', {
-                    scope: child
+            cancel: function (callback) {
+                cancelRef = firebase.database().ref('control/' + info.value.uid + '/cancel');
+                cancelRef.on('value', function (s) {
+                    var ok = s.val();
+                    if (ok) {
+                        if (continueRef) {
+                            continueRef.off();
+                            continueRef.remove();
+                        }
+                        if (cancelRef) {
+                            cancelRef.off();
+                            cancelRef.remove();
+                        }
+                        callback();
+                    }
                 });
+            },
+            continue: function (callback) {
+                continueRef = firebase.database().ref('control/' + info.value.uid + '/continue');
+                continueRef.on('value', function (s) {
+                    var ok = s.val();
+                    if (ok) {
+                        if (continueRef) {
+                            continueRef.off();
+                            continueRef.remove();
+                        }
+                        if (cancelRef) {
+                            cancelRef.off();
+                            cancelRef.remove();
+                        }
+                        callback();
+                    }
+                });
+            },
+            controlOff: function () {
+                if (continueRef) {
+                    continueRef.off();
+                    continueRef.remove();
+                }
+                if (cancelRef) {
+                    cancelRef.off();
+                    cancelRef.remove();
+                }
+            },
+            setSaveProfile: function (value) {
+                firebase.database().ref("email2uid/" + info.value.email.replace("@", "-").replace(".", "_") + "/saveInfo").set(value);
+            },
+            getDepositToken: function (amount, callback) {
+                $http({
+                    url: 'https://us-central1-greenscard-177506.cloudfunctions.net/getToken',
+                    method: 'POST',
+                    data: {
+                        amount: amount,
+                        email: info.value.email,
+                        uid: info.value.uid
+                    }
+                }).then(function (token) {
+                    if (token.data && token.data.length > 1000) {
+                        callback({ success: true, message: token.data });
+                    }
+                    else {
+                        callback({ success: false, message: "Error getting payment form" });
+                    }
+                });
+            },
+            refundTransaction: function (trans, cb) {
+                if (trans.to.uid == info.value.uid) {
+                    var fee = (trans.details && trans.details.transactionFee) ? parseFloat(trans.details.transactionFee) : 0.0;
+                    var trans2 = blindTrans(info.value, trans.from, parseFloat(trans.amount), 'refund', -(parseFloat(trans.tip) || 0), { transactionFee: fee }, info.value.uid, trans.from.uid);
+                    send(trans2, function (res) {
+                        if (res.success) {
+                            var time = Number.MAX_SAFE_INTEGER - new Date(trans.date).getTime();
+                            firebase.database().ref('transactions/' + time + '/refunded').set('true');
+                            if (fee > 0) {
+                                var feeTrans = blindTrans(feeWallet, trans.from, fee, 'fee Refund', 0, { transaction: trans2 }, "master", trans.from.uid);
+                                send(feeTrans, function (res2) { });
+                            }
+                            if (trans.tip > 0) {
+                                var tipRefundFrom = { email: info.value.email, address: tipWallet.address, account: tipWallet.account, uid: "tip" + info.value.uid };
+                                var tipTrans = blindTrans(tipRefundFrom, trans.from, trans.tip, 'tip Refund', 0, { transaction: trans2 }, "tip" + info.value.uid, trans.from.uid);
+                                send(tipTrans);
+                            }
+                        }
+                        cb(res);
+                    })
+                }
+            },
+            sendRefund: function (slot, amount, cb) {
+                var tempSlot = firebase.database().ref('slots/' + slot);
+                tempSlot.once('value').then(function (s) {
+                    var elSlot = s.val();
+                    tempSlot.remove();
+                    if (elSlot.uid == info.value.uid) {
+                        if (cb) cb("Please don't try to send yourself a payment, it will break the internet...");
+                        return;
+                    }
+                    var trans = blindTrans(info.value, elSlot, amount, 'refund', 0, { transactionFee: 0.0 }, info.value.uid, elSlot.uid);
+                    send(trans, function (res) {
+                        if (res.success) {
+                            cb("Refund complete");
+                        }
+                    })
+                })
+            },
+            waitForPayment: function (slot, amount, cb) {
 
-                child.close = function () {
-                    child.modal.hide();
-                    child.bucket.$remove();
-                };
-                child.modal.show();
-            });
-        });
-    });
-}
+                var tempSlot = firebase.database().ref('slots/' + slot);
+                tempSlot.once('value').then(function (s) {
+                    var elSlot = s.val();
+                    if (!elSlot || !elSlot.uid) {
+                        if (cb) cb("'Invalid greens code, please try again'");
+                        return;
+                    }
+                    tempSlot.remove();
+                    if (elSlot.uid == info.value.uid) {
+                        if (cb) cb("'Can not request payment from that account'");
+                        return;
+                    }
+
+                    var parent = $rootScope;
+                    var child = parent.$new(true);
+
+                    firebase.database().ref('merchants/' + info.value.uid).once('value').then(t => {
+                        var feeConfig = t.val();
+                        var te = feeConfig.tipsEnabled;
+                        if (!feeConfig) {
+                            feeConfig = defaultConfig.value;
+                        } else {
+                            if (!(feeConfig.transactionFlatFee || parseFloat(feeConfig.transactionFlatFee) === 0)) {
+                                feeConfig.transactionFlatFee = defaultConfig.value.transactionFlatFee;
+                            }
+                            if (!(feeConfig.transactionPercent || parseFloat(feeConfig.transactionPercent) === 0)) {
+                                feeConfig.transactionPercent = defaultConfig.value.transactionPercent;
+                            }
+                        }
+
+                        child.bucket = $firebaseObject(firebase.database().ref("buckets/" + elSlot.uid).push({
+                            active: slot,
+                            amount: amount,
+                            pct5: parseFloat((amount * 0.05).toFixed(2)),
+                            pct10: parseFloat((amount * 0.10).toFixed(2)),
+                            pct15: parseFloat((amount * 0.15).toFixed(2)),
+                            pct20: parseFloat((amount * 0.20).toFixed(2)),
+                            tip: 0,
+                            fee: feeConfig ? ((feeConfig.transactionPercent ? parseFloat(amount) * (parseFloat(feeConfig.transactionPercent) / 100.0) : 0.0) + (feeConfig.transactionFlatFee ? parseFloat(feeConfig.transactionFlatFee) : 0.0)).toFixed(2) : null,
+                            processing: false,
+                            completed: false,
+                            failed: false,
+                            declined: false,
+                            to: { email: info.value.email, address: wallet.address, uid: info.value.uid },
+                            tipTo: { email: info.value.email, address: tipWallet.address, uid: "tip" + info.value.uid },
+                            tipsEnabled: te,
+                            message: "If this message doesn't change for more than 30 seconds, press 'Go Back' and retry the payment.",
+                            title: "Request Sent"
+                        }));
+
+                        child.bucket.$loaded().then(function () {
+                            child.modal = $ionicModal.fromTemplate('<ion-modal-view><ion-content><br/><br/><h3>{{ bucket.title }}</h3><br/><br/><p>{{ bucket.message }}</p><br/><br/><button class="button button-light button-block" ng-click="close()" ng-show="bucket.processing">Payment in Progress</button><button class="button button-balanced button-block icon-left ion-android-checkmark-circle" ng-click="close()" ng-show="bucket.completed">Payment complete</button><button class="button button-energized button-block icon-left ion-alert-circled"  ng-click="close()" ng-show="bucket.declined">Payment Declined</button><button class=button button-balanced button-block icon-leftion-alert-circled"  ng-click="close()" ng-show="bucket.failed">Payment Error</button><button ng-click="close()" ng-show="!(bucket.declined||bucket.completed||bucket.failed)" class="button button-balanced button-block icon-left ion-close">Go Back</button><div ng-show="false" id="firebaseui-auth-container"></div></ion-content></ion-modal-view>', {
+                                scope: child
+                            });
+
+                            child.close = function () {
+                                child.modal.hide();
+                                child.bucket.$remove();
+                            };
+                            child.modal.show();
+                        });
+                    });
+                });
+            }
         };
     }
 

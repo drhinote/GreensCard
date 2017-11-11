@@ -33,6 +33,10 @@ angular.module('app.routes', [])
 
   .state('home.capture', {
     url: '/capture',
+	params: {
+		code: "",
+		amount: ""		
+},
     views: {
       'tab3': {
         templateUrl: 'templates/capture.html',

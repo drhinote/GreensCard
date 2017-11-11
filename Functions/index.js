@@ -11,10 +11,24 @@ var deasync = require('deasync');
 var cors = require('cors')({ origin: true });
 var dwolla = require('dwolla-v2');
 
+// ----------------------------------------------- BlockCypher
 var metadataToken = 'e6654717321b447d96447eb50ece8341';
+
+// ----------------------------------------------- Authorize.net
 var merchantId = '6CQcB7Maqu55';
 var transactionKey = '36NxM727mm7Y4RSx';
 var sigKey = 'B3C150400D8498FFCB8F2386E177B5407A16D07870A6B764C1FD71911FECB23C65152A67072BED598CD040EBE9733513688F9DDCF58F7644ABA51DF01D5D0A5C';
+
+// ----------------------------------------------- Dwolla
+const appKey = 'xDc0rYF08zx4B72LaYgsFBLaWToEZeO4o5cTSGPC8bvMA78whK';
+const appSecret = 'k3lSv8ou5ic3NsKYXtkJrEES9yflr9B2MPYrN5YhfoEOdRvvFc';
+const client = new dwolla.Client({
+    key: appKey,
+    secret: appSecret,
+    environment: 'sandbox' // optional - defaults to production
+});
+
+// -----------------------------------------------
 var COIN = 100000000;
 var FEE = 25000;
 var master = { uid: "master", address: "D6EcoVuudkLPDYFbRzhJ3mhQLuUBB1FBjt", account: '6KTkNmVR977NGr6VjWCAb39Uyxp9a3TUZFSGtdfUNPSeR8H2Bz1', email: 'help@greens-card.com' };
@@ -23,7 +37,6 @@ var profit = { uid: "profit", address: "DJi1eo9Hv5nJH9fJK8YydCmsrfTemBfM6m", acc
 var networkFees = { uid: "networkFees", address: "DNM3DAqL7murn6qebh7HmSaaj8ywcGbR1x", account: "QReaAm5DRqZEZhag7kb6AZpaCQGGeBNUGfkBtzaYQ5jGHkugh9gq", email: "networkFees@greens-card.com" };
 var walletSalt = ' whiskey india november';
 var tipSalt = ' to insure promptness';
-
 
 var dogecoin = {
     messagePrefix: '\x19Dogecoin Signed Message:\n',
@@ -162,9 +175,9 @@ var sortTransactions = trans => {
 
         res[from].signature = trans[no].signature;
         res[from].owes.push(no);
-        var val = Math.floor(parseFloat(trans[no].amount) * COIN);
-        res[to].owed += val;
-        res[from].owed -= val;
+        var val = Math.floor(trans[no].amount * COIN);
+        res[to].owed += parseFloat(val);
+        res[from].owed -= parseFloat(val);
     });
     return res;
 };
@@ -242,9 +255,9 @@ var process = () => {
                             allTrans[tran].batched = "true";
 
                         } else {
-                            var totalVal = parseFloat(allTrans[tran].amount);
-                            addresses[allTrans[tran].to.address].owed -= totalVal;
-                            addresses[address].owed += totalVal;
+                            var totalVal = Math.floor(allTrans[tran].amount * COIN);
+                            addresses[allTrans[tran].to.address].owed -= parseFloat(totalVal);
+                            addresses[address].owed += parseFloat(totalVal);
                             allTrans[tran].batched = "false";
                         }
                     });
@@ -311,7 +324,7 @@ var process = () => {
                         testInput(input, passes => {
                             if (passes === true) {
                                 addresses[address].inputs.push({ hash: input.tx_hash, lastIndex: input.tx_output_n });
-                                addresses[address].owed += parseFloat(input.value);
+                                addresses[address].owed += parseInt(input.value);
                             }
                             addInputs(idx + 1, prevOuts);
                         });
@@ -390,19 +403,47 @@ function createProfile(transactionId, callback) {
     });
 }
 
-exports.setupDwolla = functions.database.ref('merchants/{uid}/approved').onWrite(event => {
-    //var requestBody = {
-    //    firstName: 'Jane',
-    //    lastName: 'Merchant',
-    //    email: 'jmerchant@nomail.net',
-    //    type: 'receive-only',
-    //    businessName: 'Jane Corp llc',
-    //    ipAddress: '99.99.99.99'
-    //};
 
-    //appToken
-    //    .post('customers', requestBody)
-    //    .then(res => res.headers.get('location')); 
+exports.loginDwolla = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+        if (req.body) {
+            admin.database().ref('dwollaToken').set(req.body);
+    }
+    });
+});
+
+exports.setupDwolla = functions.database.ref('merchants/{uid}/approved').onWrite(event => {
+
+
+/*
+    var transferRequest = {
+  _links: {
+    source: {
+      href: 'https://api.dwolla.com/funding-sources/5cfcdc41-10f6-4a45-b11d-7ac89893d985'
+    },
+    destination: {
+      href: 'https://api.dwolla.com/customers/c7f300c0-f1ef-4151-9bbe-005005aa3747'
+    }
+  },
+  amount: {
+    currency: 'USD',
+    value: '225.00'
+  },
+  metadata: {
+    customerId: '8675309',
+    notes: 'For work completed on Sept. 1, 2015'
+  }
+};
+
+accountToken
+  .post('transfers', transferRequest)
+  .then(function(res) {
+    res.headers.get('location'); // => 'https://api.dwolla.com/transfers/d76265cd-0951-e511-80da-0aa34a9b2388'
+  });
+
+    */
+
+
 });
 
 exports.continue = functions.https.onRequest((req, res) => {
