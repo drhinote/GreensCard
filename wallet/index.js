@@ -106,7 +106,8 @@ var tipSalt = ' to insure promptness';
 app.route('/tx').post(async (req, res) => { 
     try {
         console.log("Broadcasting tx");
-        res.status(200).send(JSON.stringify({ success: 1, txid: await client.sendRawTransaction(req.body.tx) }));
+        var txid = await client.sendRawTransaction(req.body.tx);
+        res.status(200).send(JSON.stringify({ success: 1, txid: txid }));
     } catch (e) {
         console.log(e);
         res.sendStatus(500);

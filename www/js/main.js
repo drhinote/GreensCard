@@ -23,8 +23,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
 
         var wallet;
         var tipWallet;
-        const COIN = 100000000;
-        const FEE = 25000;
+
         var isMerchant = false;
         var info = {};
         info.value = {};
@@ -76,8 +75,8 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             var settled = 0;
             var tips = 0;
 
-            (outputs || []).forEach(output => settled += (output.value / COIN));
-            (tipOutputs || []).forEach(output => tips += (output.value / COIN));
+            (outputs || []).forEach(output => settled += (output.amount));
+            (tipOutputs || []).forEach(output => tips += (output.amount));
             (transactions || []).forEach(trans => {
                 if (trans.batched === "false") {
                     var isMine = trans.from.uid == info.value.uid;
@@ -149,11 +148,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
         var send = trans => {
             return firebase.database().ref("transactions/" + timeId(trans)).set(trans);
         };
-
-        var payment = 'payment',
-            refund = 'refund',
-            deposit = 'deposit',
-            withdrawals = 'withdrawal';
+        
         var cancelRef, continueRef;
         /*
             event: The database event type which fired (child_added, child_moved, child_removed, or child_changed).
@@ -383,12 +378,8 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             },
             signOut: logoff,
             withdraw: function (amount, flatFee, fee, callback) {
-                var to = {
-                    email: 'help@greens-card.com',
-                    uid: "master",
-                    address: 'D6EcoVuudkLPDYFbRzhJ3mhQLuUBB1FBjt'
-                };
-                var withdrawalTrans = blindTrans(info.value, to, parseFloat(amount) - (parseFloat(fee || 0) + parseFloat(flatFee || 0)), "withdrawal", 0, {
+                var to = master;
+                var withdrawalTrans = blindTrans(info.value, master, parseFloat(amount) - (parseFloat(fee || 0) + parseFloat(flatFee || 0)), "withdrawal", 0, {
                     withdrawalFlatFee: parseFloat(flatFee || 0),
                     withdrawalFee: parseFloat(fee || 0)
                 }, info.value.uid, "master");
@@ -422,12 +413,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             },
             withdrawTips: function (amount, callback) {
                 var tipSig = tipWallet;
-                var to = {
-                    email: 'help@greens-card.com',
-                    uid: "master",
-                    address: 'D6EcoVuudkLPDYFbRzhJ3mhQLuUBB1FBjt'
-                };
-                var withdrawalTrans = blindTrans({ email: info.value.email, uid: info.value.uid, account: tipSig.account, address: tipSig.address }, to, 0, "withdraw Tips", parseFloat(amount), {}, info.value.uid, "master");
+                var withdrawalTrans = blindTrans({ email: info.value.email, uid: info.value.uid, account: tipSig.account, address: tipSig.address }, master, 0, "withdraw Tips", parseFloat(amount), {}, info.value.uid, "master");
                 send(withdrawalTrans).then(() => {
                     firebase.database().ref("withdrawals").push({
                         email: info.value.email,
@@ -439,8 +425,6 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                         trans: withdrawalTrans,
                         isTipWithdraw: true
                     });
-                    var act = blindTrans({ email: info.value.email, uid: info.value.uid, account: tipSig.account, address: tipSig.address }, to, parseFloat(amount), "withdraw Tips", 0, {}, "tip" + info.value.uid, "master");
-                    send(act);
                     callback({ success: true, message: "Withdrawal successful" });
                 }).catch(err => {
                     console.log(err);

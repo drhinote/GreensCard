@@ -199,15 +199,15 @@ function ($scope, $state, $stateParams, $http, $location, dogejs, $timeout) {
         } 
     };
        try {
-   window.QRScanner_SCAN_INTERVAL = 600;
+        window.QRScanner_SCAN_INTERVAL = 600;
         if($stateParams.code.length > 1 && parseFloat($stateParams.amount) > 0) {
             $scope.out.amount = parseFloat($stateParams.amount);
             $scope.out.slot = $stateParams.code;
             $scope.manualRequest($stateParams.code);
-          
         }
         
               QRScanner.scan(scann);
+              QRScanner.show();
        } catch(e) {
            $scope.output = "Scanner disabled";
         }

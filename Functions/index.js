@@ -34,12 +34,7 @@ const dwollaAuthUrl = 'https://sandbox.dwolla.com/oauth/v2/token';
 
 // -----------------------------------------------
 var COIN = 100000000;
-var FEE = 25000;
-/*var master = { uid: "master", address: "D6EcoVuudkLPDYFbRzhJ3mhQLuUBB1FBjt", account: '6KTkNmVR977NGr6VjWCAb39Uyxp9a3TUZFSGtdfUNPSeR8H2Bz1', email: 'help@greens-card.com' };
-var deposits = { uid: "deposits", address: "DLAVEyo9YYt8K1UDx2PnsDZT5eQ4ENHocy", account: "6JgLaEZd13arhXg1FnWyTwL1Tvw6Z8hG3rQECEjXHuphCwq66d8", email: "deposit@greens-card.com" };
-var profit = { uid: "profit", address: "DJi1eo9Hv5nJH9fJK8YydCmsrfTemBfM6m", account: "6KDKt1GJiath11Y8cWsQom78fkHjUWis73492y4XeAAYdi8wAvf", email: "profit@greens-card.com" };
-var networkFees = { uid: "networkFees", address: "DNM3DAqL7murn6qebh7HmSaaj8ywcGbR1x", account: "QReaAm5DRqZEZhag7kb6AZpaCQGGeBNUGfkBtzaYQ5jGHkugh9gq", email: "networkFees@greens-card.com" };
-*/
+var FEE = 250000;
 
 var master = { uid: "main", address: "AnxTztXEdWSP5Gw3Nxz95e32cdEC6ayRbq", account: "PVLwZLKh4jvAQrvnr1XZ14xm4BUxoP7myS9N2mgwVnV3HTcoTVSc", email: 'help@greens-card.com' };
 var deposits = { uid: "deposits", address: "B1Su2xbsF3swwndZyjhBqEUnkdck1dddVV", account: "PZkkWNY1gLjeBeH6xVx7LbJY7ytQB3UbUxib3Ke7McLY6Ty6crTF", email: "deposits@greens-card.com" };
@@ -111,19 +106,19 @@ var sortTransactions = trans => {
         var from = trans[no].from.address;
         var to = trans[no].to.address;
         if (!res[from]) {
-            res[from] = { owes: [], owed: 0.0, inputs: [] };
+            res[from] = { owes: [], owed: 0.0, inputs: {} };
         }
         if (!res[to]) {
-            res[to] = { owes: [], owed: 0, inputs: [] };
+            res[to] = { owes: [], owed: 0.0, inputs: {} };
         }
 
         res[from].signature = trans[no].signature;
         res[from].owes.push(no);
-        var val = Math.floor(parseFloat(trans[no].amount) * COIN);
+        var val = parseFloat(trans[no].amount);
         res[to].owed += val;
         res[from].owed -= val;
     });
-    res[networkFees.address] = { owes: [], owed: -FEE, inputs: [], signature: networkFees.account };
+    res[networkFees.address] = { owes: [], owed: -(FEE / COIN), inputs: [], signature: networkFees.account };
     return res;
 };
 
@@ -142,36 +137,35 @@ var process = () => {
             var keys = Object.keys(addresses);
             var sigs = [];
             var submit = () => {
-                console.log(JSON.stringify(addresses));
-
-                var tx = new bitcoin.TransactionBuilder(bongger);
-                keys.forEach(address => {
-                    addresses[address].inputs.forEach(input => {
-                        tx.addInput(input.txid, input.vout);
-                        sigs.push(addresses[address].signature);
+                try {
+                    var tx = new bitcoin.TransactionBuilder(bongger);
+                    keys.forEach(address => {
+                        Object.keys(addresses[address].inputs).forEach(x => {
+                            var input = addresses[address].inputs[x];
+                            tx.addInput(input.txid, input.vout);
+                            sigs.push(addresses[address].signature);
+                        });
                     });
-                });
-                var cntr = 0;
-                keys.forEach(address => {
-                    if (addresses[address].owed > 0) {
-                        newOuts[address] = { amount: addresses[address].owed/COIN, vout: cntr };
-                        cntr++;
-                        tx.addOutput(address, addresses[address].owed);
-                    }
-                });
-                sigs.forEach((sig, i) => tx.sign(i, bitcoin.ECPair.fromWIF(sig, bongger)));
+                    var cntr = 0;
+                    keys.forEach(address => {
+                        if (addresses[address].owed > 0) {
+                            newOuts[address] = { amount: addresses[address].owed, vout: cntr };
+                            cntr++;
+                            tx.addOutput(address, Math.floor(addresses[address].owed * COIN));
+                        }
+                    });
+                    sigs.forEach((sig, i) => tx.sign(i, bitcoin.ECPair.fromWIF(sig, bongger)));
 
-                console.log("Broadcasting transaction");
-                var serialized = tx.build().toHex();
-                https({
-                    url: 'http://greens.mine.nu/tx',
-                    method: 'POST',
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ tx: serialized })
-                }, (err, response, body) => {
-                    if (response && response.statusCode === 200) {
-                        var data = JSON.parse(body);
-                        if (data.success == 1) {
+                    console.log("Broadcasting transaction");
+                    var serialized = tx.build().toHex();
+                    https({
+                        url: 'http://greens.mine.nu/tx',
+                        method: 'POST',
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ tx: serialized })
+                    }, (err, response, body) => {
+                        if (response && response.statusCode === 200) {
+                            var data = JSON.parse(body);
                             console.log("Transaction sent");
                             var updates = {};
                             Object.keys(allTrans).forEach(nm => {
@@ -179,26 +173,22 @@ var process = () => {
                             });
                             admin.database().ref().update(updates);
                             keys.forEach(address => {
-                                if (addresses[address].inputs.length > 0) {
-                                    admin.database().ref("outputs/" + address).remove().then(() => {
-                                        if (newOuts[address]) {
-                                            newOuts[address].txid = data.txid;
-                                            admin.database().ref("outputs/" + address).push(newOuts[address]);
-                                        }
-                                    });
-                                } else if (newOuts[address]) {
+                                Object.keys(addresses[address].inputs).forEach(x => {
+                                    var input = addresses[address].inputs[x];
+                                    admin.database().ref("outputs/" + address + "/" + x).remove();
+                                });
+                                if (newOuts[address]) {
                                     newOuts[address].txid = data.txid;
                                     admin.database().ref("outputs/" + address).push(newOuts[address]);
-                                }
+                                }                            
                             });
                         } else {
-                            console.log("Transmission error 2, aborting batch: " + response.statusCode + " " + response.statusMessage + " " + JSON.stringify(response));
+                            console.log("Transmission error 1, aborting batch:  " + response.statusCode + " " + response.statusMessage + " " + JSON.stringify(response) + " " + JSON.stringify(err));
                         }
-                    } else {
-                        console.log("Transmission error 1, aborting batch:  " + response.statusCode + " " + response.statusMessage + " " + JSON.stringify(response) + " " + JSON.stringify(err));
-                    }
-                });
-
+                    });
+                } catch (e) {
+                    console.log(e);
+                }
             }
             var assemble = batchNo => {
                 var address = keys[batchNo];
@@ -208,15 +198,16 @@ var process = () => {
                             allTrans[tran].batched = "true";
 
                         } else {
-                            var totalVal = Math.floor(parseFloat(allTrans[tran].amount) * COIN);
-                            addresses[allTrans[tran].to.address].owed -= parseFloat(totalVal);
-                            addresses[address].owed += parseFloat(totalVal);
+                            var totalVal = parseFloat(allTrans[tran].amount);
+                            addresses[allTrans[tran].to.address].owed -= totalVal;
+                            addresses[address].owed += totalVal;
                             allTrans[tran].batched = "false";
                         }
                     });
                     if (keys[batchNo + 1]) {
                         assemble(batchNo + 1);
                     } else {
+                        console.log("Addresses: " + JSON.stringify(addresses));
                         submit();
                     }
                 };
@@ -225,21 +216,18 @@ var process = () => {
                 var getOuts = () => {
                     admin.database().ref('outputs/' + address).once('value').then(s => {
                         if (s.exists()) {
-                            var storedOuts = [];
-                            s.forEach(cs => storedOuts.push(cs.val()));
-                            addInputs(storedOuts);
+                            s.forEach(cs => {
+                                if (addresses[address].owed < 0) {
+                                    var input = cs.val();
+                                    addresses[address].owed += parseFloat(input.amount);
+                                    addresses[address].inputs[cs.key] = input;
+                                }
+                            });
                         }
+                        nextStep();
                     });
-
                 };
 
-
-                var addInputs = prevOuts => {
-                    addresses[address].inputs = prevOuts;
-                    prevOuts.forEach(input => addresses[address].owed += Math.floor(parseFloat(input.amount) * COIN));
-                    nextStep();
-                }
-                var flop = false;
                 if (addresses[address].owed < 0) {
                     getOuts();
                 } else {
@@ -259,18 +247,45 @@ exports.startBatch = functions.https.onRequest((req, res) => {
     });
 });
 
+exports.compareInputs = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+        https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
+            if (response.statusCode === 200) {
+                var data = JSON.parse(body);
+                admin.database().ref('outputs').once('value').then(s => {
+                    var remote = {};
+
+                    if (data && data.length > 0) {
+                        data.forEach(txout => {
+                            remote[txout.txid + txout.vout + txout.amount] = true;
+                        });
+                    }
+                    s.forEach(cs => {
+                        cs.forEach(csd => {
+                            var input = csd.val();
+                            if (!remote[input.txid + input.vout + input.amount]) res.status(200).send("Missing Unspent Output!");
+                        });
+                    });
+
+                    res.sendStatus(200);
+                });
+            }
+        });
+    });
+});
+
 exports.copyInputs = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
         https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
             if (response.statusCode === 200) {
                 var data = JSON.parse(body);
-                if (data && data.length > 0) {
-                    admin.database().ref('outputs').remove().then(() => {
+                admin.database().ref('outputs').remove().then(() => {
+                    if (data && data.length > 0) {
                         data.forEach(txout => {
                             admin.database().ref('outputs/' + txout.address).push(txout);
                         });
-                    });
-                }
+                    }
+                });
             }
             res.sendStatus(200);
         });
