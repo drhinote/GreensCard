@@ -1,24 +1,31 @@
 angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
     .factory('dogejs', ["$http", "$firebaseObject", "$firebaseArray", "$rootScope", "$ionicModal", "$state", "$timeout", function ($http, $firebaseObject, $firebaseArray, $rootScope, $ionicModal, $state, $timeout) {
-        var feeWallet = { uid: "profit", address: "DJi1eo9Hv5nJH9fJK8YydCmsrfTemBfM6m", account: "6KDKt1GJiath11Y8cWsQom78fkHjUWis73492y4XeAAYdi8wAvf", email: "help@greens-card.com" };
-        var withdrawalFeeWallet = { uid: "withdrawal", address: "DCLPBm6kND8ZWwyn4WYYpGbbxfk5DHZouG", account: "6JQ2M6noanNM7xw8Ayu8ewxWmLiPdNVTgK4roicQx4HeA81zT1U", email: "help@greens-card.com" };
+
+        var master = { uid: "main", address: "AnxTztXEdWSP5Gw3Nxz95e32cdEC6ayRbq", account: "PVLwZLKh4jvAQrvnr1XZ14xm4BUxoP7myS9N2mgwVnV3HTcoTVSc", email: 'help@greens-card.com' };
+        var deposits = { uid: "deposits", address: "B1Su2xbsF3swwndZyjhBqEUnkdck1dddVV", account: "PZkkWNY1gLjeBeH6xVx7LbJY7ytQB3UbUxib3Ke7McLY6Ty6crTF", email: "deposits@greens-card.com" };
+        var profit = { uid: "profit", address: "AmPXSszXF3q1u8j19Fu1UsZ5wEGq1AZGuG", account: "PamhuA5avVrHNnWnQaaYtDo9ckfFjHveBnDmTc7UFpVTa7uDq451", email: "transactions@greens-card.com" };
+        var withdrawals = { uid: "withdrawals", address: "Ahb16mRs5Bm2GybaoazVFEcRVdiJeXAuxA", account: "PYCjLZ9X6ykdgeqNucQb5T7w3iZ67NRqXS2ESpikPRmdsX6rEode", email: "withdrawals@greens-card.com" };
+        var networkFees = { uid: "fees", address: "Afnr4HpCVTgaqox2MxmorEMAQpjG7yqVdN", account: "PVU17q6bJcSz7jsWUxsZpr1nhnnLKVwQqwds7Xqq2MJCzBynkNUH", email: "networkFees@greens-card.com" };
+
+        var walletSalt = ' whiskey india november';
+        var tipSalt = ' to insure promptness';
+
+        var bongger = {
+            messagePrefix: '\x19Bongger Signed Message:\n',
+            bip32: {
+                public: 0x019da462,
+                private: 0x019d9cfe
+            },
+            pubKeyHash: 24,
+            scriptHash: 22,
+            wif: 152
+        };
+
         var wallet;
         var tipWallet;
-        var dogecoin = {
-            messagePrefix: '\x19Dogecoin Signed Message:\n',
-            bip32: {
-                public: 0x02facafd,
-                private: 0x02fac398
-            },
-            pubKeyHash: 0x1e,
-            scriptHash: 0x16,
-            wif: 0x9e
-        };
         const COIN = 100000000;
         const FEE = 25000;
         var isMerchant = false;
-        var settled = 0;
-        var tips = 0;
         var info = {};
         info.value = {};
         var slot = {};
@@ -30,48 +37,23 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
         var pending = 0;
         var current = 0;
         var transactions;
+        var outputs;
+        var tipOutputs;
         var bucketsRef;
         var slotRef;
         var profileRef;
 
-        var websocket;
-        var timer;
-        var updates = {};
-
-        var reopen = () => {
-            websocket = new WebSocket("wss://socket.blockcypher.com/v1/doge/main");
-            websocket.onmessage = function (event) {
-                if (event.data) {
-                    var tx = JSON.parse(event.data);
-                    if (tx.addresses) {
-                        tx.addresses.forEach(item => { if (updates[item]) updates[item](); });
-                    }
-                }
-            };
-            var ping = () => {
-                websocket.send(JSON.stringify({ event: "ping" }));
-                timer = $timeout(ping, 20000);
-            };
-            websocket.onopen = function (event) {
-                websocket.send(JSON.stringify({ event: "unconfirmed-tx" }));
-                ping();
-            };
-
-            websocket.onclose = function (event) {
-                if (timer) $timeout.cancel(timer);
-                reopen();
-            };
+        var timeId = trans => {
+            return (Number.MAX_SAFE_INTEGER - new Date(trans.date).getTime()) + trans.signature.substring(trans.signature.length - 3);
         };
-        reopen();
 
         var logoff = function () {
-            settled = 0;
             wallet = undefined;
             tipWallet = undefined;
-            tips = 0;
             if (transactions) transactions.$destroy();
+            if (outputs) outputs.$destroy();
+            if (tipOutputs) tipOutputs.$destroy();
             slot.value = '';
-            if (websocket) websocket.close();
             if (slotRef) slotRef.off();
             if (bucketsRef) bucketsRef.off();
             if (profileRef) profileRef.off();
@@ -79,66 +61,24 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
 
         var getAddress = function (email, label, callback) {
             $http({
-                url: `https://us-central1-greenscard-177506.cloudfunctions.net/get${label}/`,
+                url: `https://us-central1-greenscard-177506.cloudfunctions.net/get${label}`,
                 method: 'POST',
+                headers: { "Content-Type": "application/json" },
                 data: { email: email },
             }).then(function (token) {
                 callback(token.data);
             });
         };
-        var getSettledBalance = (callback) => {
-            $http({ url: 'https://api.blockcypher.com/v1/doge/main/addrs/' + info.value.address + '/balance' }).then(function (result) {
-                settled = (result.data.final_balance / COIN).toPrecision(2);
-                if (isMerchant === true) {
-                    $http({ url: 'https://api.blockcypher.com/v1/doge/main/addrs/' + info.value.tipAddress + '/balance' }).then(function (result2) {
-                        tips = (result2.data.final_balance / COIN).toPrecision(2);
-                        callback(settled);
-                    }).catch(err2 => {
-                        console.log(err2);
-                        callback(settled);
-                    });
-                }
-                else {
-                    callback(settled);
-                }
-            });
-        }
 
-        /*
-        var getSettledBalance = (callback) => {
-            $http({ url: 'https://dogechain.info/api/v1/unspent/' + wallet.address }).then(function (result) {
-                tips = 0;
-                settled = 0;
-                result.data.unspent_outputs.forEach(output => {
-                    firebase.database().ref("txHash/" + output.tx_hash).once('value').then(s => {
-                        if (s.exists()) {
-                            settled += parseFloat(output.value) / COIN;
-                        }
-                    });
-                });
-                if (isMerchant === true) {
-                    $http({ url: 'https://api.blockcypher.com/v1/doge/main/addrs/' + tipWallet.address + '/balance?unspentOnly=true&includeConfidence=false&includeScript=false' }).then(function (result2) {
-                        result.data.txrefs.forEach(output => {
-                            firebase.database().ref("txHash/" + output.tx_hash).once('value').then(s => {
-                                if (s.exists()) {
-                                    tips += parseFloat(output.value) / COIN;
-                                }
-                            });
-                            callback(settled);
-                        }).catch(err2 => {
-                            console.log(err2);
-                            callback(settled);
-                        })
-                    });
-                };
-            })
-        };
-        */
         var checkBalance = () => {
             var pending = 0;
             var tipsPending = 0;
+            var settled = 0;
+            var tips = 0;
 
-            transactions.forEach(trans => {
+            (outputs || []).forEach(output => settled += (output.value / COIN));
+            (tipOutputs || []).forEach(output => tips += (output.value / COIN));
+            (transactions || []).forEach(trans => {
                 if (trans.batched === "false") {
                     var isMine = trans.from.uid == info.value.uid;
                     pending += isMine ? trans.amount : -trans.amount;
@@ -149,7 +89,8 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             });
             info.value.balance = (settled - pending).toFixed(2);
             info.value.tipsBal = (tips - tipsPending).toFixed(2);
-            /*    if (reloadScope.value) {
+            $timeout(() => {
+                if (reloadScope.value) {
                     reloadScope.value.$apply();
                 }
                 if (buyScope.value) {
@@ -157,7 +98,8 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 }
                 if (manageScope.value) {
                     manageScope.value.$apply();
-                }*/
+                }
+            }, 1000);
             return info.value.balance;
         };
 
@@ -205,13 +147,13 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
 
 
         var send = trans => {
-            return firebase.database().ref("transactions/" + (Number.MAX_SAFE_INTEGER - new Date(trans.date).getTime())).set(trans);
+            return firebase.database().ref("transactions/" + timeId(trans)).set(trans);
         };
 
         var payment = 'payment',
             refund = 'refund',
             deposit = 'deposit',
-            withdrawal = 'withdrawal';
+            withdrawals = 'withdrawal';
         var cancelRef, continueRef;
         /*
             event: The database event type which fired (child_added, child_moved, child_removed, or child_changed).
@@ -259,68 +201,67 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 s.ref.child('spent').set('true').then(() => {
 
                     if (bucket.spent) return;
-                    getSettledBalance(bal => {
+                    checkBalance();
+                    s.ref.child('message').set("Waiting for the customer's response");
+                    var fee = bucket.fee ? parseFloat(bucket.fee) : 0.0;
+                    var total = parseFloat(bucket.amount) + parseFloat(fee);
 
-                        checkBalance();
-                        s.ref.child('message').set("Waiting for the customer's response");
-                        var fee = bucket.fee ? parseFloat(bucket.fee) : 0.0;
-                        var total = parseFloat(bucket.amount) + parseFloat(fee);
-
-                        if (total <= parseFloat(info.value.balance)) {
-                            ask(bucket, function (approved) {
-                                if (approved) {
+                    if (total <= parseFloat(info.value.balance)) {
+                        ask(bucket, function (approved) {
+                            if (approved) {
+                                s.ref.update({
+                                    title: "Payment approved",
+                                    processing: true,
+                                    message: "The payment will be on it's way soon"
+                                });
+                                var rand = Math.random() * 100;
+                                var tip = parseFloat(bucket.tip);
+                                var trans = blindTrans(info.value, bucket.to, bucket.amount, 'payment', (tip + total <= parseFloat(info.value.balance)) ? tip : 0, { transactionFee: fee }, bucket.to.uid, info.value.uid);
+                                send(trans).then(() => {
                                     s.ref.update({
-                                        title: "Payment approved",
-                                        processing: true,
-                                        message: "The payment will be on it's way soon"
+                                        title: "Payment Complete",
+                                        processing: false,
+                                        completed: true,
+                                        message: "Thank you for using our service" + (rand > 98.0 ? ", I'm getting a little verklempt!" : "")
                                     });
-                                    var rand = Math.random() * 100;
-                                    var tip = parseFloat(bucket.tip);
-                                    var trans = blindTrans(info.value, bucket.to, bucket.amount, 'payment', (tip + total <= parseFloat(info.value.balance)) ? tip : 0, { transactionFee: fee }, bucket.to.uid, info.value.uid);
-                                    send(trans).then(() => {
-                                        s.ref.update({
-                                            title: "Payment Complete",
-                                            processing: false,
-                                            completed: true,
-                                            message: "Thank you for using our service" + (rand > 98.0 ? ", I'm getting a little verklempt!" : "")
-                                        });
-                                        if (fee > 0) {
-                                            var feeTrans = blindTrans(info.value, feeWallet, fee, 'fee', 0, { transaction: trans }, "master", info.value.uid);
-                                            send(feeTrans);
-                                        }
-                                        if (bucket.tip > 0 && bucket.tip + bucket.amount + fee <= bal) {
+                                    if (fee > 0) {
+                                        var feeTrans = blindTrans(info.value, profit, fee, 'fee', 0, { transaction: trans }, "master", info.value.uid);
+                                        send(feeTrans);
+                                    }
+                                    if (bucket.tip > 0 && bucket.tip + bucket.amount + fee <= parseFloat(info.value.balance)) {
+                                        $timeout(() => {
                                             var tipTrans = blindTrans(info.value, bucket.tipTo, tip, 'tip', 0, { transaaction: trans }, "tip" + bucket.to.uid, info.value.uid);
                                             send(tipTrans);
-                                        }
-                                    }).catch(err => {
-                                        s.ref.update({
-                                            title: "Payment Failed",
-                                            processing: false,
-                                            failed: true,
-                                            message: "There was some kind of error: " + err
-                                        });
-                                        console.log(err);
-                                    });
-                                }
-                                else {
+                                        }, 300);
+                                    }
+                                }).catch(err => {
                                     s.ref.update({
-                                        declined: true,
-                                        title: "Payment Declined",
-                                        message: "Well, the customer said no"
+                                        title: "Payment Failed",
+                                        processing: false,
+                                        failed: true,
+                                        message: "There was some kind of error: " + err
                                     });
-                                }
+                                    console.log(err);
+                                });
+                            }
+                            else {
+                                s.ref.update({
+                                    declined: true,
+                                    title: "Payment Declined",
+                                    message: "Well, the customer said no"
+                                });
+                            }
 
-                            });
-                        } else {
-                            s.ref.update({
-                                title: "Payment Error",
-                                processing: false,
-                                completed: false,
-                                failed: true,
-                                message: "Insufficient funds"
-                            });
-                        }
-                    });
+                        });
+                    } else {
+                        s.ref.update({
+                            title: "Payment Error",
+                            processing: false,
+                            completed: false,
+                            failed: true,
+                            message: "Insufficient funds"
+                        });
+                    }
                 });
 
             }
@@ -378,9 +319,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 }
             },
             doubleCheck: () => {
-                getSettledBalance(bal => {
-                    checkBalance();
-                });
+                checkBalance();
             },
             removeProfile: function () {
                 firebase.database().ref("info/" + info.value.uid + "/profileSaved").remove();
@@ -408,44 +347,37 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 transactions.$loaded().then(() => {
                     getAddress(user.email, "Account", localWallet => {
                         wallet = localWallet;
+                        outputs = $firebaseArray(firebase.database().ref("outputs/" + localWallet.address));
 
                         info.value.account = wallet.account;
                         info.value.address = wallet.address;
-                        updates[wallet.address] = () => {
-                            getSettledBalance(bal => {
-                                cb(checkBalance());
-                            });
-                        };
 
                         getSlot();
                         firebase.database().ref("email2uid/" + user.email.replace(new RegExp('@', 'g'), '-').replace(new RegExp('\\.', 'g'), '_')).set({ uid: user.uid, account: info.value.account });
                         bucketsRef = firebase.database().ref("buckets/" + user.uid);
                         bucketsRef.on("child_added", handleRequests);
-                        transactions.$watch(checkBalance);
-
+                        if (transactions) transactions.$watch(checkBalance);
+                        if(outputs) outputs.$watch(checkBalance);
                         var startup = () => {
                             defaultConfig.value = $firebaseObject(firebase.database().ref('merchants/000default'));
                             defaultConfig.value.$loaded().then(() => {
-                                getSettledBalance(bal => {
-                                    cb(checkBalance());
-                                });
+                                cb(checkBalance());
                             });
-                        };
+                        }
                         if (isMerchant) {
                             getAddress(user.email, "TipAccount", localTipWallet => {
                                 tipWallet = localTipWallet;
+                                tipOutputs = $firebaseArray(firebase.database().ref("outputs/" + localTipWallet.address));
+                                if (tipOutputs) tipOutputs.$watch(checkBalance);
+
                                 info.value.tipAccount = tipWallet.account;
                                 info.value.tipAddress = tipWallet.address;
-                                updates[tipWallet.address] = () => {
-                                    getSettledBalance(bal => {
-                                        cb(checkBalance());
-                                    });
-                                };
                                 startup();
                             });
                         } else {
                             startup();
                         }
+
                     });
                 });
             },
@@ -461,7 +393,17 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                     withdrawalFee: parseFloat(fee || 0)
                 }, info.value.uid, "master");
                 send(withdrawalTrans).then(() => {
-                    firebase.database().ref("withdrawals/" + (Number.MAX_SAFE_INTEGER - new Date(withdrawalTrans.date).getTime())).set({
+                    if (parseFloat(fee || 0) > 0) {
+                        var feeTrans1 = blindTrans(info.value, profit, parseFloat(fee), 'fee', 0, { trans: withdrawalTrans }, info.value.uid, "withdraw Fee");
+                        send(feeTrans1, function (res2) { });
+                    }
+                    if (parseFloat(flatFee || 0) > 0) {
+                        $timeout(() => {
+                            var feeTrans2 = blindTrans(info.value, withdrawals, parseFloat(flatFee), 'fee', 0, { trans: withdrawalTrans }, info.value.uid, "withdraw FlatFee");
+                            send(feeTrans2, function (res3) { });
+                        }, 300);
+                    }
+                    firebase.database().ref("withdrawals/" + timeId(withdrawalTrans)).set({
                         email: info.value.email,
                         uid: info.value.uid,
                         amount: parseFloat(amount),
@@ -471,14 +413,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                         trans: withdrawalTrans,
                         isTipWithdraw: false
                     });
-                    if (fee > 0) {
-                        var feeTrans1 = blindTrans(info.value, feeWallet, parseFloat(fee), 'fee', 0, { trans: withdrawalTrans }, info.value.uid, "withdraw Fee");
-                        send(feeTrans1, function (res2) { });
-                    }
-                    if (flatFee > 0) {
-                        var feeTrans2 = blindTrans(info.value, withdrawalFeeWallet, parseFloat(flatFee), 'fee', 0, { trans: withdrawalTrans }, info.value.uid, "withdraw FlatFee");
-                        send(feeTrans2, function (res3) { });
-                    }
+
                     callback({ success: true, message: "Withdrawal successful" });
                 }).catch(err => {
                     console.log(err);
@@ -584,16 +519,18 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                     var trans2 = blindTrans(info.value, trans.from, parseFloat(trans.amount), 'refund', -(parseFloat(trans.tip) || 0), { transactionFee: fee }, info.value.uid, trans.from.uid);
                     send(trans2, function (res) {
                         if (res.success) {
-                            var time = Number.MAX_SAFE_INTEGER - new Date(trans.date).getTime();
+                            var time = timeId(trans);
                             firebase.database().ref('transactions/' + time + '/refunded').set('true');
                             if (fee > 0) {
-                                var feeTrans = blindTrans(feeWallet, trans.from, fee, 'fee Refund', 0, { transaction: trans2 }, "master", trans.from.uid);
+                                var feeTrans = blindTrans(profit, trans.from, fee, 'fee Refund', 0, { transaction: trans2 }, "master", trans.from.uid);
                                 send(feeTrans, function (res2) { });
                             }
                             if (trans.tip > 0) {
-                                var tipRefundFrom = { email: info.value.email, address: tipWallet.address, account: tipWallet.account, uid: "tip" + info.value.uid };
-                                var tipTrans = blindTrans(tipRefundFrom, trans.from, trans.tip, 'tip Refund', 0, { transaction: trans2 }, "tip" + info.value.uid, trans.from.uid);
-                                send(tipTrans);
+                                $timeout(() => {
+                                    var tipRefundFrom = { email: info.value.email, address: tipWallet.address, account: tipWallet.account, uid: "tip" + info.value.uid };
+                                    var tipTrans = blindTrans(tipRefundFrom, trans.from, trans.tip, 'tip Refund', 0, { transaction: trans2 }, "tip" + info.value.uid, trans.from.uid);
+                                    send(tipTrans);
+                                }, 300);
                             }
                         }
                         cb(res);
