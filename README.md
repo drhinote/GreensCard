@@ -29,6 +29,9 @@ This application requires a timer to initiate a batching routine.   This timer i
 
 Ionic Creator its used to build the mobile application packages for IOS and Android
 
+##### Android Credentials #####
+keystore file: /greenscard1.keystore, keystore password: greens, certificate name: production, certificate password: greens
+
 The web application can be downloaded by exporting the project zip file from Ionic Creator.  Unzip the contents of the merchant
 and customer apps to /Merchant/www and /Customer/www respectively. 
 
