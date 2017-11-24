@@ -199,7 +199,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                     checkBalance();
                     s.ref.child('message').set("Waiting for the customer's response");
                     var fee = bucket.fee ? parseFloat(bucket.fee) : 0.0;
-                    var total = parseFloat(bucket.amount) + parseFloat(fee);
+                    var total = parseFloat(bucket.amount) + parseFloat(fee) + parseFloat(bucket.tip);
 
                     if (total <= parseFloat(info.value.balance)) {
                         ask(bucket, function (approved) {
@@ -317,6 +317,13 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 checkBalance();
             },
             removeProfile: function () {
+                $http({
+                    url: 'https://us-central1-greenscard-177506.cloudfunctions.net/deleteProfile',
+                    method: 'POST',
+                    data: {
+                        profileId: info.value.profileSaved.profile.customerProfileId
+                    }
+                });
                 firebase.database().ref("info/" + info.value.uid + "/profileSaved").remove();
             },
             signIn: function (userz, cb) {
@@ -330,10 +337,10 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 profileRef = firebase.database().ref("info/" + user.uid + "/profileSaved");
                 profileRef.on('value', s => {
                     if (s.exists()) {
-                        if (reloadScope.value)
-                            reloadScope.value.$apply(() => info.value.profileSaved = s.val());
-                        else
                             info.value.profileSaved = s.val();
+                            if (reloadScope.value) {
+                                $timeout(() => reloadScope.value.$apply(), 250);
+                            }
                     } else {
                         info.value.profileSaved = null;
                     }

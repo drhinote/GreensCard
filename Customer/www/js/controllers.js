@@ -43,81 +43,58 @@ $scope.refresh = dogejs.refreshSlot;
 function ($scope, $state, $http, $stateParams, dogejs) {
         if(!firebase.auth().currentUser) $state.go("login");
     
-$scope.output = "Add Payment Information";
 $scope.info = dogejs.info;
 var feeConfig = dogejs.feeConfig;
 $scope.out = { };
 
+$scope.buttonPressed = undefined;
+
+$scope.selectAction = () => {
+  ($scope.buttonPressed?($scope.info.value.profileSaved?$scope.useStored:$scope.submit):$scope.showControls)();  
+};
+
+$scope.showControls = () => {
+    $scope.buttonPressed = true; 
+};
+
 $scope.$watch("out.amount", newVal => {
     if(feeConfig.value)
-        $scope.fee = parseFloat(((feeConfig.value.depositPercent?parseFloat(newVal)*(parseFloat(feeConfig.value.depositPercent)/100.0):0.0) + (feeConfig.value.depositFlatFee?parseFloat(feeConfig.value.depositFlatFee):0.0)).toFixed(2));
+        $scope.fee = (((feeConfig.value.depositPercent?parseFloat(newVal)*(parseFloat(feeConfig.value.depositPercent)/100.0):0.0) + (feeConfig.value.depositFlatFee?parseFloat(feeConfig.value.depositFlatFee):0.0)) || 0).toFixed(2);
 });
 
 // Why wont this page refresh?   HACK
 dogejs.reloadScope.value = $scope;
 
 $scope.submit = function() {
-    var amount = $scope.out.amount || 0;
-    if(amount <= 0.0) {
-        $scope.output = "Enter a value, or check your input";
-    }
-    else if(amount > 500.0) {
-        $scope.output = "That's too much";
-    }
-    else {
-        $scope.output = 'Creating Payment Request';
-        $state.go("page8", { saveInfo: $scope.out.saveInfo?"yes":"no", amount: $scope.out.amount });
-        $scope.output = "Add Payment Information";
+    if($scope.out.amount) {
+    $scope.override = 'Creating Payment Request';
+    $state.go("page8", { saveInfo: $scope.out.saveInfo?"yes":"no", amount: $scope.out.amount });
+    $scope.out.amount = undefined;
+    $timeout(() => $scope.override = undefined, 5000);
     }
 }
 
-    var cap = function(string) {
-        return string.charAt(0).toUpperCase() + string.slice(1);
-    }
-
-    var shortDate = function(date) {
-        var hour = date.getHours();
-        var minute = date.getMinutes();
-        if(minute < 10) {
-            minute = '0' + minute;
-        }
-        var part = 'am';
-        if(hour > 12) {
-            hour -= 12;
-            part = 'pm';
-        }
-        var year = new Date().getFullYear() === date.getFullYear()?'':('/' + date.getYear());
-        return (date.getMonth() + 1) + "/" + date.getDate() + year + " at " + hour + ":" + minute + " " + part; // getMonth() is zero-based
-    }
-    
-$scope.prettyPrint = function(deposit) {
-    return parseFloat(deposit.amount).toFixed(2) + " on " + shortDate(new Date(deposit.date));
+var cap = function(string) {
+    return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
-$scope.output2 = 'Use Stored Payment Info'
 $scope.useStored = function() {
-    var amount = parseFloat($scope.out.amount) || 0;
-    if(amount <= 0.0) {
-        $scope.output2 = "Enter a value";
-    }
-    else if(amount > 500.0) {
-        $scope.output2 = "That's too much";
-    }
-    else {
+    if($scope.out.amount) {
+    $scope.override = 'Creating Payment Request';
+    $http({ 
+        url: 'https://us-central1-greenscard-177506.cloudfunctions.net/profilePayment',
+        method: 'POST',
+        data: { profile: dogejs.info.value.profileSaved,
+                amount: $scope.out.amount,
+                uid: dogejs.info.value.uid
+        }
+    }).then(function(res) {
+        $scope.override = cap(res.data);
         $scope.out.amount = undefined;
-        $scope.output2 = 'Creating Payment Request';
-        $http({ 
-            url: 'https://us-central1-greenscard-177506.cloudfunctions.net/profilePayment',
-            method: 'POST',
-            data: { profile: dogejs.info.value.profileSaved,
-                    amount: amount,
-                    uid: dogejs.info.value.uid
-            }
-        }).then(function(res) {
-            $scope.output2 = cap(res.data);
-        });
+        $timeout(() => $scope.override = undefined, 5000);
+    });
     }
-}
+};
 
 $scope.removeProfile = dogejs.removeProfile;
 

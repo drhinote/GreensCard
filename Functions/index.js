@@ -118,7 +118,7 @@ var sortTransactions = trans => {
         res[to].owed += val;
         res[from].owed -= val;
     });
-    res[networkFees.address] = { owes: [], owed: -(FEE / COIN), inputs: [], signature: networkFees.account };
+    res[networkFees.address] = { owes: [], owed: -(FEE / COIN), inputs: {}, signature: networkFees.account };
     return res;
 };
 
@@ -174,13 +174,12 @@ var process = () => {
                             admin.database().ref().update(updates);
                             keys.forEach(address => {
                                 Object.keys(addresses[address].inputs).forEach(x => {
-                                    var input = addresses[address].inputs[x];
                                     admin.database().ref("outputs/" + address + "/" + x).remove();
                                 });
                                 if (newOuts[address]) {
                                     newOuts[address].txid = data.txid;
                                     admin.database().ref("outputs/" + address).push(newOuts[address]);
-                                }                            
+                                }
                             });
                         } else {
                             console.log("Transmission error 1, aborting batch:  " + response.statusCode + " " + response.statusMessage + " " + JSON.stringify(response) + " " + JSON.stringify(err));
@@ -247,6 +246,36 @@ exports.startBatch = functions.https.onRequest((req, res) => {
     });
 });
 
+exports.addInputs = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+        var address = req.param("address", "AnxTztXEdWSP5Gw3Nxz95e32cdEC6ayRbq");
+        if (address) {
+            https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
+                if (response.statusCode === 200) {
+                    var data = JSON.parse(body);
+                    var newOuts = [];
+                    var ref = admin.database().ref('outputs').child(address);
+                    ref.remove();
+                    if (data && data.length > 0) {
+                        data.forEach(txout => {
+                            if (txout.address == address) {
+                                ref.push(txout);
+                                newOuts.push(txout);
+                            }
+                        });
+                    }
+                    res.status(200).send(JSON.stringify(newOuts));
+
+                }
+            });
+        }
+        else {
+            res.status(200).send("None");
+        }
+    });
+});
+
+
 exports.compareInputs = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
         https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
@@ -254,20 +283,36 @@ exports.compareInputs = functions.https.onRequest((req, res) => {
                 var data = JSON.parse(body);
                 admin.database().ref('outputs').once('value').then(s => {
                     var remote = {};
-
+                    var newRemotes = {};
+                    var missingOuts = {};
                     if (data && data.length > 0) {
                         data.forEach(txout => {
-                            remote[txout.txid + txout.vout + txout.amount] = true;
+                            if (!newRemotes[txout.address]) newRemotes[txout.address] = [];
+                            newRemotes[txout.address].push(txout);
+                            remote[txout.txid + txout.vout + txout.amount] = txout;
                         });
                     }
                     s.forEach(cs => {
+                        var address = cs.key;
                         cs.forEach(csd => {
                             var input = csd.val();
-                            if (!remote[input.txid + input.vout + input.amount]) res.status(200).send("Missing Unspent Output!");
+                            if (!remote[input.txid + input.vout + input.amount]) {
+                                if (!missingOuts[address]) {
+                                    missingOuts[address] = [];
+                                }
+                                missingOuts[address].push(input);
+                                csd.ref.remove();
+                            }
                         });
                     });
-
-                    res.sendStatus(200);
+                    Object.keys(missingOuts).forEach(addr => {
+                        if (newRemotes[addr]) {
+                            newRemotes[addr].forEach(output => {
+                                admin.database().ref('outputs').child(addr).push(output);
+                            });
+                        }
+                    });
+                    res.status(200).send(JSON.stringify(missingOuts));
                 });
             }
         });
@@ -353,7 +398,7 @@ var send = trans => {
 
 
 function createProfile(transactionId, callback) {
-
+    console.log("Creating Profile");
     var merchantAuthenticationType = new ApiContracts.MerchantAuthenticationType();
     merchantAuthenticationType.setName(merchantId);
     merchantAuthenticationType.setTransactionKey(transactionKey);
@@ -362,25 +407,20 @@ function createProfile(transactionId, callback) {
     createRequest.setTransId(transactionId);
     createRequest.setMerchantAuthentication(merchantAuthenticationType);
 
-    //console.log(JSON.stringify(createRequest.getJSON(), null, 2));
-
     var ctrl = new ApiControllers.CreateCustomerProfileFromTransactionController(createRequest.getJSON());
-
+    console.log("Sending Create Profile Request");
     ctrl.execute(function () {
 
         var apiResponse = ctrl.getResponse();
 
         var response = new ApiContracts.CreateCustomerProfileResponse(apiResponse);
-        //console.log(JSON.stringify(response.getJSON(), null, 2));
-
+       
         if (response != null) {
             if (response.getMessages().getResultCode() == ApiContracts.MessageTypeEnum.OK) {
                 console.log('Successfully created a customer payment profile with id: ' + response.getCustomerProfileId() +
                     ' from a transaction : ' + transactionId);
             }
             else {
-                //console.log(JSON.stringify(response));
-                //console.log('Result Code: ' + response.getMessages().getResultCode());
                 console.log('Error Code: ' + response.getMessages().getMessage()[0].getCode());
                 console.log('Error message: ' + response.getMessages().getMessage()[0].getText());
             }
@@ -597,7 +637,13 @@ exports.payments = functions.https.onRequest((req, res) => {
                 });
             }
             if (ids.saveInfo == 'yes') {
-                createProfile(txid, r => { getCustomerProfile(email, s => { admin.database().ref('info/' + ids.uid + '/profileSaved').set(s); }); });
+                console.log("Saving profile");
+                createProfile(txid, r => {
+                    setTimeout(() => getCustomerProfile(email, s => {
+                        console.log("Sending profile to DB");
+                        if (s.profile.customerProfileId) admin.database().ref('info/' + ids.uid + '/profileSaved').set(s);
+                    }), 3000);
+                });
             }
         })
     });
@@ -689,7 +735,7 @@ exports.getToken = functions.https.onRequest((req, res) => {
 
 
 function getCustomerProfile(customerProfileId, callback) {
-
+    console.log("Retreiving profile");
     var merchantAuthenticationType = new ApiContracts.MerchantAuthenticationType();
     merchantAuthenticationType.setName(merchantId);
     merchantAuthenticationType.setTransactionKey(transactionKey);
@@ -708,9 +754,47 @@ function getCustomerProfile(customerProfileId, callback) {
 
         if (response != null) {
             if (response.getMessages().getResultCode() == ApiContracts.MessageTypeEnum.OK) {
-                console.log('Customer profile ID : ' + response.getProfile().getCustomerProfileId());
-                console.log('Customer Email : ' + response.getProfile().getEmail());
-                console.log('Description : ' + response.getProfile().getDescription());
+                console.log('Profile ID: ' + response.getProfile().getCustomerProfileId() + ', Email: ' + response.getProfile().getEmail());
+            }
+            else {
+                console.log('Error message: ' + response.getMessages().getMessage()[0].getText());
+            }
+        }
+        else {
+            console.log('Null response received');
+        }
+        callback(response);
+    });
+}
+
+
+exports.getProfile = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+        res.sendStatus(200);
+        getCustomerProfile(req.body.email, s => { if (s.profile.customerProfileId) admin.database().ref('info/' + req.body.uid + '/profileSaved').set(s); });
+    });
+});
+
+function deleteCustomerProfile(customerProfileId) {
+
+    var merchantAuthenticationType = new ApiContracts.MerchantAuthenticationType();
+    merchantAuthenticationType.setName(merchantId);
+    merchantAuthenticationType.setTransactionKey(transactionKey);
+
+    var deleteRequest = new ApiContracts.DeleteCustomerProfileRequest();
+    deleteRequest.setMerchantAuthentication(merchantAuthenticationType);
+    deleteRequest.setCustomerProfileId(customerProfileId);
+
+    var ctrl = new ApiControllers.DeleteCustomerProfileController(deleteRequest.getJSON());
+
+    ctrl.execute(function () {
+
+        var apiResponse = ctrl.getResponse();
+        var response = new ApiContracts.DeleteCustomerProfileResponse(apiResponse);
+        
+        if (response != null) {
+            if (response.getMessages().getResultCode() == ApiContracts.MessageTypeEnum.OK) {
+                console.log('Successfully deleted a customer profile with id: ' + customerProfileId);
             }
             else {
                 console.log('Error Code: ' + response.getMessages().getMessage()[0].getCode());
@@ -720,19 +804,16 @@ function getCustomerProfile(customerProfileId, callback) {
         else {
             console.log('Null response received');
         }
-
-        callback(response);
     });
 }
 
-
-exports.getProfile = functions.https.onRequest((req, res) => {
+exports.deleteProfile = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
-        getCustomerProfile(req.body.email, function (profile) {
-            res.status(200).send(profile);
-        });
+        res.sendStatus(200);
+        deleteCustomerProfile(req.body.profileId);
     });
-})
+});
+
 
 exports.profilePayment = functions.https.onRequest((req, res) => {
     cors(req, res, () => {

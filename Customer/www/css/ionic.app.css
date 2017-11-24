@@ -7839,11 +7839,11 @@ input[type="checkbox"][readonly] {
   cursor: pointer; }
   .checkbox input:before,
   .checkbox .checkbox-icon:before {
-    border-color: #ddd; }
+    border-color: #006938; }
   .checkbox input:checked:before,
   .checkbox input:checked + .checkbox-icon:before {
-    background: #387ef5;
-    border-color: #387ef5; }
+    background: #006938;
+    border-color: #006938; }
 
 .checkbox-light input:before,
 .checkbox-light .checkbox-icon:before {

@@ -5,27 +5,29 @@
         <strong>{{ info.value.balance }}</strong>
       </p>
     </div>
-    <form id="reload-form4" class="list">
-      <div id="reload-markdown23" ng-show="fee" style="text-align:center;" class="show-list-numbers-and-dots">
-        <p style="color:red;">A processing fee of
-          <strong>{{ fee }}</strong> will be added to your deposit amount</p>
+    <div id="reload-markdown17" ng-show="info.value.profileSaved" class="show-list-numbers-and-dots">
+      <p style="color:#006938;"> Card:
+        <strong>{{ info.value.profileSaved.profile.paymentProfiles[0].payment.creditCard.cardNumber || 'Error reading saved info' }}</strong>
+      </p>
+    </div>
+    <form id="reload-form4" class="list" ng-submit="selectAction()">
+      <button id="reload-button12" type="submit" class="button button-balanced button-block">{{ override?override:(buttonPressed? (out.amount?(info.value.profileSaved?"Accept &amp; Use Saved Card":"Accept &amp; Add Card Information"):"Enter a value, or check amount") : "Begin New Deposit") }}</button>
+      <button id="reload-button10" ng-click="removeProfile()"
+        ng-show="info.value.profileSaved" class="button button-balanced button-block button-outline">Remove Saved Information</button>
+      <div id="reload-container2" ng-show="buttonPressed">
+        <form id="reload-form8" class="list">
+          <label class="item item-input" id="reload-input14">
+            <span class="input-label">Amount</span>
+            <input type="number" placeholder="$500 Max" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/" min="0.01" max="500">
+          </label>
+          <label class="item item-input" id="reload-input17">
+            <span class="input-label">Deposit Fee</span>
+            <input type="text" placeholder="" ng-model="fee" ng-disabled="true">
+          </label>
+          <ion-checkbox id="reload-checkbox1" ng-model="out.saveInfo" ng-show="!info.value.profileSaved" value="&quot;yes&quot;">Save Payment Information</ion-checkbox>
+          <div class="spacer" style="height: 100px;"></div>
+        </form>
       </div>
-      <label class="item item-input" id="reload-input14">
-        <span class="input-label">$</span>
-        <input type="number" placeholder="$500 Max" ng-model="out.amount" step="0.01" ng-pattern="/^[0-9]+(\.[0-9]{1,2})?$/">
-      </label>
-      <div id="reload-container1" ng-show="info.value.profileSaved">
-        <div class="spacer" style="width: 320px; height: 12px;"></div>
-        <div id="reload-markdown17" class="show-list-numbers-and-dots">
-          <p style="color:#000000;"> Card:
-            <strong>{{ info.value.profileSaved.profile.paymentProfiles[0].payment.creditCard.cardNumber || 'Error reading saved info' }}</strong>
-          </p>
-        </div>
-        <button id="reload-button9" ng-click="useStored()" class="button button-balanced button-block">{{ output2 }}</button>
-        <button id="reload-button10" ng-click="removeProfile()" class="button button-balanced button-block button-outline">Remove Saved Info</button>
-      </div>
-      <ion-toggle toggle-class="toggle-balanced" id="reload-toggle1" ng-model="out.saveInfo">{{ info.value.profileSaved?'Update':'Store' }} payment info</ion-toggle>
-      <button id="reload-button12" ng-click="submit()" class="button button-balanced button-block">{{ output }}</button>
     </form>
   </ion-content>
 </ion-view>
