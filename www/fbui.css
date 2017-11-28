@@ -1,5 +1,9 @@
 ﻿@import url(https://fonts.googleapis.com/css?family=Roboto:400,500,700);
 
+.even {
+    background-color: lightgray;
+}
+
 .mdl-button {
     background: 0 0;
     border: none;

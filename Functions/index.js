@@ -246,6 +246,30 @@ exports.startBatch = functions.https.onRequest((req, res) => {
     });
 });
 
+exports.resetSystem = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+        admin.database().ref('transactions').once('value').then(s => {
+            s.forEach(cs => {
+                cs.ref.child('batched').set('false');
+            });
+            res.sendStatus(200);
+        });
+    });
+});
+
+exports.getTransTypes = functions.https.onRequest((req, res) => {
+    cors(req, res, () => {
+        admin.database().ref('transactions').once('value').then(s => {
+            var types = {};
+            s.forEach(cs => {
+                if (!types[cs.val().type]) types[cs.val().type] = true;
+            });
+            res.status(200).send(JSON.stringify(types));
+        });
+    });
+});
+
+
 exports.addInputs = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
         var address = req.param("address", "AnxTztXEdWSP5Gw3Nxz95e32cdEC6ayRbq");
@@ -301,17 +325,17 @@ exports.compareInputs = functions.https.onRequest((req, res) => {
                                     missingOuts[address] = [];
                                 }
                                 missingOuts[address].push(input);
-                                csd.ref.remove();
+//                                csd.ref.remove();
                             }
                         });
                     });
-                    Object.keys(missingOuts).forEach(addr => {
-                        if (newRemotes[addr]) {
-                            newRemotes[addr].forEach(output => {
-                                admin.database().ref('outputs').child(addr).push(output);
-                            });
-                        }
-                    });
+                    //Object.keys(missingOuts).forEach(addr => {
+                    //    if (newRemotes[addr]) {
+                    //        newRemotes[addr].forEach(output => {
+                    //            admin.database().ref('outputs').child(addr).push(output);
+                    //        });
+                    //    }
+                    //});
                     res.status(200).send(JSON.stringify(missingOuts));
                 });
             }
@@ -337,39 +361,24 @@ exports.copyInputs = functions.https.onRequest((req, res) => {
     });
 });
 
+
+var newAddress = function (secret, salt) {
+    var hash = bitcoin.crypto.sha256(new Buffer(secret + salt));
+    var d = BigInteger.fromBuffer(hash);
+    return new bitcoin.ECPair(d, null, { network: bongger });
+};
+
 exports.getAccount = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
-        try {
-            https({
-                url: 'http://greens.mine.nu/getAccount',
-                method: 'POST',
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(req.body)
-            }, (err, res1, body1) => {
-                res.status(200).send(body1);
-            });
-        } catch (e) {
-            console.log(e);
-            res.sendStatus(500);
-        }
+        var address = newAddress(req.body.email, walletSalt);
+        res.status(200).send(JSON.stringify({ account: address.toWIF(), address: address.getAddress() }));
     });
 });
 
 exports.getTipAccount = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
-        try {
-            https({
-                url: 'http://greens.mine.nu/getTipAccount',
-                method: 'POST',
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(req.body)
-            }, (err, res1, body1) => {
-                res.status(200).send(body1);
-            });
-        } catch (e) {
-            console.log(e);
-            res.sendStatus(500);
-        }
+        var address = newAddress(req.body.email, tipSalt);
+        res.status(200).send(JSON.stringify({ account: address.toWIF(), address: address.getAddress() }));
     });
 });
 
@@ -592,13 +601,6 @@ exports.cancel = functions.https.onRequest((req, res) => {
 exports.withdrawalAddress = functions.https.onRequest((req, res) => {
     res.status(200).send(master.address);
 });
-
-
-var newAddress = function (secret, salt) {
-    var hash = bitcoin.crypto.sha256(new Buffer(secret + salt));
-    var d = BigInteger.fromBuffer(hash);
-    return new bitcoin.ECPair(d, null, { network: bongger });
-};
 
 var getFee = (merch, amount, type, inclusive) => {
     return new Promise((o, x) => {

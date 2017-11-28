@@ -146,9 +146,10 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
 
 
         var send = trans => {
-            return firebase.database().ref("transactions/" + timeId(trans)).set(trans);
+            var res = firebase.database().ref("transactions/" + timeId(trans)).set(trans);
+            return res;
         };
-        
+
         var cancelRef, continueRef;
         /*
             event: The database event type which fired (child_added, child_moved, child_removed, or child_changed).
@@ -219,15 +220,19 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                                         completed: true,
                                         message: "Thank you for using our service" + (rand > 98.0 ? ", I'm getting a little verklempt!" : "")
                                     });
-                                    if (fee > 0) {
-                                        var feeTrans = blindTrans(info.value, profit, fee, 'fee', 0, { transaction: trans }, "master", info.value.uid);
-                                        send(feeTrans);
-                                    }
-                                    if (bucket.tip > 0 && bucket.tip + bucket.amount + fee <= parseFloat(info.value.balance)) {
-                                        $timeout(() => {
+                                    var sendTip = () => {
+                                        if (parseFloat(bucket.tip) > 0) {
                                             var tipTrans = blindTrans(info.value, bucket.tipTo, tip, 'tip', 0, { transaaction: trans }, "tip" + bucket.to.uid, info.value.uid);
                                             send(tipTrans);
-                                        }, 300);
+                                        }
+                                    };
+                                    if (fee > 0) {
+                                        var feeTrans = blindTrans(info.value, profit, fee, 'fee', 0, { transaction: trans }, "master", info.value.uid);
+                                        send(feeTrans).then(() => {
+                                            sendTip();
+                                        });
+                                    } else {
+                                        sendTip();
                                     }
                                 }).catch(err => {
                                     s.ref.update({
@@ -273,18 +278,21 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             feeConfig: defaultConfig,
             getWithdrawConfig: callback => {
                 firebase.database().ref('merchants/' + info.value.uid).once('value').then(t => {
-                    var feeConfig = t.val();
-                    if (!feeConfig) {
-                        feeConfig = defaultConfig.value;
-                    } else {
-                        if (!(feeConfig.withdrawalFlatFee || parseFloat(feeConfig.withdrawalFlatFee) === 0)) {
-                            feeConfig.withdrawalFlatFee = defaultConfig.value.withdrawalFlatFee;
-                        }
-                        if (!(feeConfig.withdrawalPercent || parseFloat(feeConfig.withdrawalPercent) === 0)) {
-                            feeConfig.withdrawalPercent = defaultConfig.value.withdrawalPercent;
-                        }
-                    }
-                    callback(feeConfig);
+                    if (defaultConfig.value)
+                        defaultConfig.value.$loaded().then(() => {
+                            var feeConfig = t.val();
+                            if (!feeConfig) {
+                                feeConfig = defaultConfig.value;
+                            } else {
+                                if (!(feeConfig.withdrawalFlatFee || parseFloat(feeConfig.withdrawalFlatFee) === 0)) {
+                                    feeConfig.withdrawalFlatFee = defaultConfig.value.withdrawalFlatFee;
+                                }
+                                if (!(feeConfig.withdrawalPercent || parseFloat(feeConfig.withdrawalPercent) === 0)) {
+                                    feeConfig.withdrawalPercent = defaultConfig.value.withdrawalPercent;
+                                }
+                            }
+                            callback(feeConfig);
+                        });
                 });
             },
             refreshSlot: getSlot,
@@ -337,10 +345,10 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                 profileRef = firebase.database().ref("info/" + user.uid + "/profileSaved");
                 profileRef.on('value', s => {
                     if (s.exists()) {
-                            info.value.profileSaved = s.val();
-                            if (reloadScope.value) {
-                                $timeout(() => reloadScope.value.$apply(), 250);
-                            }
+                        info.value.profileSaved = s.val();
+                        if (reloadScope.value) {
+                            $timeout(() => reloadScope.value.$apply(), 250);
+                        }
                     } else {
                         info.value.profileSaved = null;
                     }
@@ -359,7 +367,7 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                         bucketsRef = firebase.database().ref("buckets/" + user.uid);
                         bucketsRef.on("child_added", handleRequests);
                         if (transactions) transactions.$watch(checkBalance);
-                        if(outputs) outputs.$watch(checkBalance);
+                        outputs.$watch(checkBalance);
                         var startup = () => {
                             defaultConfig.value = $firebaseObject(firebase.database().ref('merchants/000default'));
                             defaultConfig.value.$loaded().then(() => {
@@ -370,7 +378,9 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
                             getAddress(user.email, "TipAccount", localTipWallet => {
                                 tipWallet = localTipWallet;
                                 tipOutputs = $firebaseArray(firebase.database().ref("outputs/" + localTipWallet.address));
-                                if (tipOutputs) tipOutputs.$watch(checkBalance);
+                                tipOutputs.$loaded().then(() => {
+                                    tipOutputs.$watch(checkBalance);
+                                });
 
                                 info.value.tipAccount = tipWallet.account;
                                 info.value.tipAddress = tipWallet.address;
@@ -420,19 +430,22 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             },
             withdrawTips: function (amount, callback) {
                 var tipSig = tipWallet;
-                var withdrawalTrans = blindTrans({ email: info.value.email, uid: info.value.uid, account: tipSig.account, address: tipSig.address }, master, 0, "withdraw Tips", parseFloat(amount), {}, info.value.uid, "master");
+                var withdrawalTrans = blindTrans({ email: info.value.email, uid: info.value.uid, account: tipSig.account, address: tipSig.address }, master, parseFloat(amount), "withdraw Tips", 0, {}, "tip" + info.value.uid, "master");
                 send(withdrawalTrans).then(() => {
-                    firebase.database().ref("withdrawals").push({
-                        email: info.value.email,
-                        uid: info.value.uid,
-                        amount: parseFloat(amount),
-                        date: new Date().toISOString(),
-                        fee: 0,
-                        flatFee: 0,
-                        trans: withdrawalTrans,
-                        isTipWithdraw: true
+                    withdrawalTrans = blindTrans({ email: info.value.email, uid: info.value.uid, account: tipSig.account, address: tipSig.address }, master, 0, "withdraw Tips", parseFloat(amount), {}, info.value.uid, "master");
+                    send(withdrawalTrans).then(() => {
+                        firebase.database().ref("withdrawals").push({
+                            email: info.value.email,
+                            uid: info.value.uid,
+                            amount: parseFloat(amount),
+                            date: new Date().toISOString(),
+                            fee: 0,
+                            flatFee: 0,
+                            trans: withdrawalTrans,
+                            isTipWithdraw: true
+                        });
+                        callback({ success: true, message: "Withdrawal successful" });
                     });
-                    callback({ success: true, message: "Withdrawal successful" });
                 }).catch(err => {
                     console.log(err);
                     callback({ success: false, message: "Withdrawal failed" });
