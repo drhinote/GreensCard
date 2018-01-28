@@ -1,0 +1,19 @@
+<ion-view title="Manage" hide-nav-bar="true" cache-view="false" id="page12">
+  <ion-content padding="true" class="manual-ios-statusbar-padding">
+    <div style="margin-right:-20px;">
+      <button id="manage-button8" ng-click="logout()" style="left:-10px;" class="button button-balanced button-full icon-left ion-log-out">Sign Out</button>
+    </div>
+    <div id="manage-markdown10" class="show-list-numbers-and-dots">
+      <p style="color:#000000;">Balance:
+        <strong>{{ info.value.balance }}</strong>
+      </p>
+    </div>
+    <button id="manage-button13" ng-click="refreshBalance(info.value)" class="button button-balanced button-small button-block button-outline icon ion-android-refresh"> Refresh Balance</button>
+    <ion-list id="manage-list5">
+      <ion-item class="item-divider" id="manage-list-item-divider5"> Recent Transactions</ion-item>
+      <ion-item id="manage-list-item18" ng-repeat="transaction in transactions.value">{{ printPretty(transaction) }}
+        <span class="item-note">{{ makeNote(transaction) }}</span>
+      </ion-item>
+    </ion-list>
+  </ion-content>
+</ion-view>

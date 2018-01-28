@@ -9,9 +9,13 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "angular-qrcode": "^7.2.0",
     "bigi": "^1.4.2",
     "bitcoin-core": "^1.2.0",
+    "bitcoin-net": "^4.5.0",
+    "bitcoin-protocol": "^3.0.1",
     "bitcoinjs-lib": "^3.3.0",
+    "bitcore-node": "git+https://github.com/bitpay/bitcore-node.git",
     "body-parser": "^1.18.2",
     "express": "^4.16.2"
   },

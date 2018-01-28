@@ -11,7 +11,7 @@ $checkbox-off-border-default: #006938 !default;
 $checkbox-on-bg-default: #006938 !default;
 $checkbox-on-border-default: #006938 !default;
 $ionicons-font-path: "../lib/ionic/fonts" !default;
-@import "../www/lib/ionic/scss";
+@import "../www/lib/ionic/scss/ionic";
 $input-label-color: lighten($dark, 40%) !default;
 ion-view,.pane,.view {
 	background-color: none;

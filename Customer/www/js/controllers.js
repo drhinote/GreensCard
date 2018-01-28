@@ -10,8 +10,6 @@ $scope.output = '';
 $scope.info = dogejs.info;
 $scope.slot = dogejs.slot;
 $scope.addSpaces = num => {
-   $scope.qrcode.clear();
-   $scope.qrcode.makeCode(num.toString());
    var res = num.toString();
    var i = 3;
    while(i < res.length) {
@@ -25,13 +23,6 @@ $scope.addSpaces = num => {
 // Why wont this page refresh?   HACK
 dogejs.buyScope.value = $scope;
 
-
-$scope.qrcode = new QRCode(document.getElementById("qrcode"), {
-	text: $scope.slot.value,
-	width: 128,
-	height: 128,
-});
-$scope.qrcode.makeCode($scope.slot.value);
 $scope.refresh = dogejs.refreshSlot;
 }
 
@@ -146,11 +137,9 @@ function ($scope, $stateParams, $state, ui, dogejs) {
         },  
         credentialHelper: firebaseui.auth.CredentialHelper.NONE,
         signInOptions: [
-          firebase.auth.EmailAuthProvider.PROVIDER_ID,
-       //   firebase.auth.GoogleAuthProvider.PROVIDER_ID,
-    //      firebase.auth.FacebookAuthProvider.PROVIDER_ID
+          firebase.auth.EmailAuthProvider.PROVIDER_ID
         ],
-        tosUrl: 'https://greens.cards/c/templates/termsOfService.html'
+        tosUrl: 'https://greens.cards/termsOfService.html'
       };
       
       

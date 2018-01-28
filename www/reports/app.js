@@ -170,7 +170,7 @@
                 this.tipsPerCustomer = () => (this.totalTips / this.customerCount).toFixed(2);
                 this.mostFrequentCustomer = {};
                 this.highestPayingCustomer = {};
-                this.transactionsPerCustomer = () => (this.transactionCount / this.customerCount);
+                this.transactionsPerCustomer = () => (this.transactionCount / this.customerCount).toFixed(1);
                 this.salesPerTransaction = () => (this.totalSales / this.transactionCount).toFixed(2);
                 this.refundsPerTransaction = () => (this.totalRefunds / this.transactionCount).toFixed(2);
                 this.grandTotalPerTransaction = () => (this.grandTotal / this.transactionCount).toFixed(2);

@@ -1,16 +1,9 @@
 {
-  "name": "GreensCard",
-  "app_id": "03645a43",
+  "name": "Customer",
+  "app_id": "022a8096",
   "type": "ionic1",
   "integrations": {
     "cordova": {},
     "gulp": {}
-  },
-  "gulpStartupTasks": [
-    "sass",
-    "watch"
-  ],
-  "watchPatterns": [
-    "scss/**/*"
-  ]
+  }
 }

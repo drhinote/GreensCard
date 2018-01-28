@@ -1,2 +1,1 @@
-angular.module('app.directives', ['ionic.cloud','ionic.cloud.init']);
-
+angular.module('app.directives', ['ionic.cloud','ionic.cloud.init'])

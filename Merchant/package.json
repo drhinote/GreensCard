@@ -1,5 +1,5 @@
 {
-  "name": "GreensCard",
+  "name": "Customer",
   "version": "0.0.1",
   "description": "An Ionic project",
   "devDependencies": {
@@ -9,11 +9,11 @@
     "gulp-sass": "^3.1.0"
   },
   "dependencies": {
-    "cordova-android": "^6.2.3",
+    "cordova-android": "5.2.1",
     "cordova-browser": "^5.0.1",
     "cordova-ios": "4.2.0",
     "cordova-plugin-add-swift-support": "^1.6.1",
-    "cordova-plugin-compat": "^1.0.0",
+    "cordova-plugin-compat": "^1.2.0",
     "cordova-plugin-console": "^1.0.5",
     "cordova-plugin-device": "^1.1.4",
     "cordova-plugin-inappbrowser": "^1.7.1",
@@ -21,14 +21,12 @@
     "cordova-plugin-qrscanner": "^2.5.0",
     "cordova-plugin-splashscreen": "^4.0.3",
     "cordova-plugin-statusbar": "^2.2.1",
-    "cordova-plugin-swift-support": "^3.1.1",
     "cordova-plugin-whitelist": "^1.3.1",
     "cordova-windows": "4.4.2",
     "ionic-plugin-keyboard": "^2.2.1"
   },
   "cordova": {
     "plugins": {
-      "cordova-plugin-qrscanner": {},
       "cordova-plugin-device": {},
       "cordova-plugin-console": {},
       "cordova-plugin-inappbrowser": {},
@@ -37,11 +35,9 @@
       "cordova-plugin-statusbar": {},
       "ionic-plugin-keyboard": {},
       "cordova-plugin-ionic": {
-        "APP_ID": "03645a43",
+        "APP_ID": "022a8096",
         "CHANNEL_NAME": "Master",
-        "UPDATE_METHOD": "auto",
-        "UPDATE_API": "https://api.ionicjs.com",
-        "MAX_STORE": "2"
+        "UPDATE_METHOD": "background"
       }
     },
     "platforms": [

@@ -75,8 +75,8 @@ angular.module('app.services', ['ionic.cloud', 'ionic.cloud.init', 'firebase'])
             var settled = 0;
             var tips = 0;
 
-            (outputs || []).forEach(output => settled += (output.amount));
-            (tipOutputs || []).forEach(output => tips += (output.amount));
+            (outputs || []).forEach(output => settled += (output.value));
+            (tipOutputs || []).forEach(output => tips += (output.value));
             (transactions || []).forEach(trans => {
                 if (trans.batched === "false") {
                     var isMine = trans.from.uid == info.value.uid;

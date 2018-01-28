@@ -1,8 +1,8 @@
 <?xml version='1.0' encoding='utf-8'?>
-<widget id="greens.cards" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
-    <name>Merchant</name>
-    <description>The Greens Card merchant interface</description>
-    <author email="jeremy@greens-card.com" href="https://greens.cards/">The Greens Card</author>
+<widget id="io.ionic.starter" version="1.0.0" xmlns="http://www.w3.org/ns/widgets" xmlns:cdv="http://cordova.apache.org/ns/1.0">
+    <name>Customer</name>
+    <description>An awesome Ionic/Cordova app.</description>
+    <author email="jeremy@greens-card.com" href="https://Greens.Cards/">The Greens Card</author>
     <content src="index.html" />
     <access origin="*" />
     <allow-navigation href="http://ionic.local/*" />
@@ -79,11 +79,10 @@
     </platform>
     <vs:toolsetVersion xmlns:vs="http://schemas.microsoft.com/appx/2014/htmlapps">6.3.1</vs:toolsetVersion>
     <preference name="windows-target-version" value="10.0" />
-    <engine name="android" spec="^6.2.3" />
+    <engine name="android" spec="5.2.1" />
     <engine name="ios" spec="4.2.0" />
     <engine name="windows" spec="4.4.2" />
     <engine name="browser" spec="^5.0.1" />
-    <plugin name="cordova-plugin-qrscanner" spec="^2.5.0" />
     <plugin name="cordova-plugin-device" spec="^1.1.4" />
     <plugin name="cordova-plugin-console" spec="^1.0.5" />
     <plugin name="cordova-plugin-inappbrowser" spec="^1.7.1" />
@@ -92,10 +91,8 @@
     <plugin name="cordova-plugin-statusbar" spec="^2.2.1" />
     <plugin name="ionic-plugin-keyboard" spec="^2.2.1" />
     <plugin name="cordova-plugin-ionic" spec="^1.1.8">
-        <variable name="APP_ID" value="03645a43" />
+        <variable name="APP_ID" value="022a8096" />
         <variable name="CHANNEL_NAME" value="Master" />
-        <variable name="UPDATE_METHOD" value="auto" />
-        <variable name="UPDATE_API" value="https://api.ionicjs.com" />
-        <variable name="MAX_STORE" value="2" />
+        <variable name="UPDATE_METHOD" value="background" />
     </plugin>
 </widget>

@@ -13,14 +13,13 @@ var dwolla = require('dwolla-v2');
 
 // ----------------------------------------------- Google
 var baseUrl = 'https://us-central1-greenscard-177506.cloudfunctions.net/';
-
+var walletUrl = 'https://api.greens.cards';
 // ----------------------------------------------- BlockCypher
 var metadataToken = 'e6654717321b447d96447eb50ece8341';
 
 // ----------------------------------------------- Authorize.net
-var merchantId = '6CQcB7Maqu55';
-var transactionKey = '36NxM727mm7Y4RSx';
-var sigKey = 'B3C150400D8498FFCB8F2386E177B5407A16D07870A6B764C1FD71911FECB23C65152A67072BED598CD040EBE9733513688F9DDCF58F7644ABA51DF01D5D0A5C';
+var merchantId = '85bkrEQh7sW';
+var transactionKey = '6h26sRWP4u5DJJ7W';
 
 // ----------------------------------------------- Dwolla
 const appKey = 'Po6aren82nrRV51onabj4y06ZAcdhvowd15cNnbip11Zs9iGrO';
@@ -149,7 +148,7 @@ var process = () => {
                     var cntr = 0;
                     keys.forEach(address => {
                         if (addresses[address].owed > 0) {
-                            newOuts[address] = { amount: addresses[address].owed, vout: cntr };
+                            newOuts[address] = { value: addresses[address].owed, vout: cntr };
                             cntr++;
                             tx.addOutput(address, Math.floor(addresses[address].owed * COIN));
                         }
@@ -159,30 +158,32 @@ var process = () => {
                     console.log("Broadcasting transaction");
                     var serialized = tx.build().toHex();
                     https({
-                        url: 'http://greens.mine.nu/tx',
+                        url: walletUrl + '/tx',
                         method: 'POST',
                         headers: { "Content-Type": "application/json" },
+                        timeout: 720000,
                         body: JSON.stringify({ tx: serialized })
                     }, (err, response, body) => {
-                        if (response && response.statusCode === 200) {
-                            var data = JSON.parse(body);
-                            console.log("Transaction sent");
-                            var updates = {};
-                            Object.keys(allTrans).forEach(nm => {
-                                updates['transactions/' + nm + '/batched'] = allTrans[nm].batched;
-                            });
-                            admin.database().ref().update(updates);
-                            keys.forEach(address => {
-                                Object.keys(addresses[address].inputs).forEach(x => {
-                                    admin.database().ref("outputs/" + address + "/" + x).remove();
+                        if (response.statusCode == 200) {
+                            try {
+                                console.log("Transaction sent");
+                                var updates = {};
+                                Object.keys(allTrans).forEach(nm => {
+                                    updates['transactions/' + nm + '/batched'] = allTrans[nm].batched;
                                 });
-                                if (newOuts[address]) {
-                                    newOuts[address].txid = data.txid;
-                                    admin.database().ref("outputs/" + address).push(newOuts[address]);
-                                }
-                            });
-                        } else {
-                            console.log("Transmission error 1, aborting batch:  " + response.statusCode + " " + response.statusMessage + " " + JSON.stringify(response) + " " + JSON.stringify(err));
+                                admin.database().ref().update(updates);
+                                keys.forEach(address => {
+                                    Object.keys(addresses[address].inputs).forEach(x => {
+                                        admin.database().ref("outputs/" + address + "/" + x).remove();
+                                    });
+                                    if (newOuts[address]) {
+                                        newOuts[address].txid = body;
+                                        admin.database().ref("outputs/" + address).push(newOuts[address]);
+                                    }
+                                });
+                            } catch (ex) {
+                                console.log(ex);
+                            }
                         }
                     });
                 } catch (e) {
@@ -218,7 +219,7 @@ var process = () => {
                             s.forEach(cs => {
                                 if (addresses[address].owed < 0) {
                                     var input = cs.val();
-                                    addresses[address].owed += parseFloat(input.amount);
+                                    addresses[address].owed += parseFloat(input.value);
                                     addresses[address].inputs[cs.key] = input;
                                 }
                             });
@@ -248,49 +249,45 @@ exports.startBatch = functions.https.onRequest((req, res) => {
 
 exports.resetSystem = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
+        admin.database().ref('outputs').remove();
         admin.database().ref('transactions').once('value').then(s => {
             s.forEach(cs => {
                 cs.ref.child('batched').set('false');
             });
-            res.sendStatus(200);
-        });
-    });
-});
-
-exports.getTransTypes = functions.https.onRequest((req, res) => {
-    cors(req, res, () => {
-        admin.database().ref('transactions').once('value').then(s => {
-            var types = {};
-            s.forEach(cs => {
-                if (!types[cs.val().type]) types[cs.val().type] = true;
+            addInputsFor("AnxTztXEdWSP5Gw3Nxz95e32cdEC6ayRbq").then(() => {
+                addInputsFor("Afnr4HpCVTgaqox2MxmorEMAQpjG7yqVdN").then(() => {
+                    res.sendStatus(200);
+                    process();
+                });
             });
-            res.status(200).send(JSON.stringify(types));
         });
     });
 });
 
+function addInputsFor(address) {
+    return new Promise((o, x) => {
+        https({ url: walletUrl + '/unspent/' + address }, (err, response, body) => {
+            if (response.statusCode === 200) {
+                var data = JSON.parse(body);
+                var newOuts = [];
+                var ref = admin.database().ref('outputs').child(address);
+                ref.remove();
+                if (data) {
+                    ref.set(data.unspent);
+                    newOuts = data;
+                }
+                o(newOuts);
+            }
+        });
+    });
+}
 
 exports.addInputs = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
         var address = req.param("address", "AnxTztXEdWSP5Gw3Nxz95e32cdEC6ayRbq");
         if (address) {
-            https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
-                if (response.statusCode === 200) {
-                    var data = JSON.parse(body);
-                    var newOuts = [];
-                    var ref = admin.database().ref('outputs').child(address);
-                    ref.remove();
-                    if (data && data.length > 0) {
-                        data.forEach(txout => {
-                            if (txout.address == address) {
-                                ref.push(txout);
-                                newOuts.push(txout);
-                            }
-                        });
-                    }
-                    res.status(200).send(JSON.stringify(newOuts));
-
-                }
+            addInputsFor(address).then(newOuts => {
+                res.status(200).send(JSON.stringify(newOuts));
             });
         }
         else {
@@ -298,69 +295,6 @@ exports.addInputs = functions.https.onRequest((req, res) => {
         }
     });
 });
-
-
-exports.compareInputs = functions.https.onRequest((req, res) => {
-    cors(req, res, () => {
-        https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
-            if (response.statusCode === 200) {
-                var data = JSON.parse(body);
-                admin.database().ref('outputs').once('value').then(s => {
-                    var remote = {};
-                    var newRemotes = {};
-                    var missingOuts = {};
-                    if (data && data.length > 0) {
-                        data.forEach(txout => {
-                            if (!newRemotes[txout.address]) newRemotes[txout.address] = [];
-                            newRemotes[txout.address].push(txout);
-                            remote[txout.txid + txout.vout + txout.amount] = txout;
-                        });
-                    }
-                    s.forEach(cs => {
-                        var address = cs.key;
-                        cs.forEach(csd => {
-                            var input = csd.val();
-                            if (!remote[input.txid + input.vout + input.amount]) {
-                                if (!missingOuts[address]) {
-                                    missingOuts[address] = [];
-                                }
-                                missingOuts[address].push(input);
-//                                csd.ref.remove();
-                            }
-                        });
-                    });
-                    //Object.keys(missingOuts).forEach(addr => {
-                    //    if (newRemotes[addr]) {
-                    //        newRemotes[addr].forEach(output => {
-                    //            admin.database().ref('outputs').child(addr).push(output);
-                    //        });
-                    //    }
-                    //});
-                    res.status(200).send(JSON.stringify(missingOuts));
-                });
-            }
-        });
-    });
-});
-
-exports.copyInputs = functions.https.onRequest((req, res) => {
-    cors(req, res, () => {
-        https({ url: 'http://greens.mine.nu/unspent' }, (err, response, body) => {
-            if (response.statusCode === 200) {
-                var data = JSON.parse(body);
-                admin.database().ref('outputs').remove().then(() => {
-                    if (data && data.length > 0) {
-                        data.forEach(txout => {
-                            admin.database().ref('outputs/' + txout.address).push(txout);
-                        });
-                    }
-                });
-            }
-            res.sendStatus(200);
-        });
-    });
-});
-
 
 var newAddress = function (secret, salt) {
     var hash = bitcoin.crypto.sha256(new Buffer(secret + salt));
@@ -381,25 +315,6 @@ exports.getTipAccount = functions.https.onRequest((req, res) => {
         res.status(200).send(JSON.stringify({ account: address.toWIF(), address: address.getAddress() }));
     });
 });
-
-exports.balance = functions.https.onRequest((req, res) => {
-    cors(req, res, () => {
-        try {
-            https({
-                url: 'http://greens.mine.nu/balance',
-                method: 'POST',
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(req.body)
-            }, (err, res1, body1) => {
-                res.status(200).send(body1);
-            });
-        } catch (e) {
-            console.log(e);
-            res.sendStatus(500);
-        }
-    });
-});
-
 
 var send = trans => {
     firebase.database().ref("transactions/" + timeId(trans)).set(trans);
@@ -549,40 +464,6 @@ exports.loginDwolla = functions.https.onRequest((req, res) => {
     });
 });
 
-exports.setupDwolla = functions.database.ref('merchants/{uid}/approved').onWrite(event => {
-
-
-    /*
-        var transferRequest = {
-      _links: {
-        source: {
-          href: 'https://api.dwolla.com/funding-sources/5cfcdc41-10f6-4a45-b11d-7ac89893d985'
-        },
-        destination: {
-          href: 'https://api.dwolla.com/customers/c7f300c0-f1ef-4151-9bbe-005005aa3747'
-        }
-      },
-      amount: {
-        currency: 'USD',
-        value: '225.00'
-      },
-      metadata: {
-        customerId: '8675309',
-        notes: 'For work completed on Sept. 1, 2015'
-      }
-    };
-    
-    accountToken
-      .post('transfers', transferRequest)
-      .then(function(res) {
-        res.headers.get('location'); // => 'https://api.dwolla.com/transfers/d76265cd-0951-e511-80da-0aa34a9b2388'
-      });
-    
-        */
-
-
-});
-
 exports.continue = functions.https.onRequest((req, res) => {
     if (req.param("uid")) {
         admin.database().ref('control/' + req.param("uid") + '/continue').set(true);
@@ -595,11 +476,6 @@ exports.cancel = functions.https.onRequest((req, res) => {
         admin.database().ref('control/' + req.param("uid") + '/cancel').set(true);
         res.status(200).send("Redirecting...");
     }
-});
-
-
-exports.withdrawalAddress = functions.https.onRequest((req, res) => {
-    res.status(200).send(master.address);
 });
 
 var getFee = (merch, amount, type, inclusive) => {
@@ -769,7 +645,6 @@ function getCustomerProfile(customerProfileId, callback) {
     });
 }
 
-
 exports.getProfile = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
         res.sendStatus(200);
@@ -815,7 +690,6 @@ exports.deleteProfile = functions.https.onRequest((req, res) => {
         deleteCustomerProfile(req.body.profileId);
     });
 });
-
 
 exports.profilePayment = functions.https.onRequest((req, res) => {
     cors(req, res, () => {
